@@ -1,0 +1,413 @@
+/* ============================================================
+   CAP — feuille de style
+   Principes appliqués (les mêmes que pour Refuge, l'app sœur) :
+   - aucun blanc pur, aucun noir sur blanc : contrastes doux
+   - aucune animation rapide, aucun clignotement
+   - zones tactiles très larges (min 60px)
+   - un seul thème calme, sombre par défaut
+   ============================================================ */
+
+:root {
+  --bg:          #171b21;
+  --surface:     #1e242c;
+  --surface-2:   #262d37;
+  --bord:        #333b46;
+  --texte:       #d2d8de;   /* gris très clair, jamais #fff */
+  --texte-doux:  #96a0ac;
+  --accent:      #6f93a8;   /* bleu-gris doux — la couleur de Cap */
+  --accent-fond: #212e35;
+  --fini:        #b89a7a;   /* ton chaud et calme, jamais vert vif ni rouge */
+  --fini-fond:   #332b22;
+  --rayon: 20px;
+  --duree: 300ms;           /* toutes les transitions, volontairement lentes */
+
+  /* Sans cette ligne, le navigateur dessine les champs et cases avec son
+     habillage clair par défaut : des carrés blancs sur fond sombre. */
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:          #f1eee8;   /* beige papier, jamais #fff */
+    --surface:     #f8f6f1;
+    --surface-2:   #ebe7df;
+    --bord:        #d8d2c7;
+    --texte:       #3b4046;
+    --texte-doux:  #6e757d;
+    --accent:      #4f7086;
+    --accent-fond: #e3eaee;
+    --fini:        #8c6a46;
+    --fini-fond:   #f0e6d8;
+    color-scheme: light;
+  }
+}
+
+/* ---------- Base ---------- */
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--texte);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+  overscroll-behavior: none;
+}
+
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+h1, h2, h3 { font-weight: 600; line-height: 1.3; margin: 0 0 12px; }
+h1 { font-size: 1.35rem; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; color: var(--texte-doux); font-weight: 600; }
+p  { margin: 0 0 14px; }
+small { font-size: 0.85rem; color: var(--texte-doux); }
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* ---------- Mise en page ---------- */
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px 18px calc(28px + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+
+.vue { display: none; max-width: 640px; width: 100%; margin: 0 auto; }
+.vue.active { display: block; }
+
+#vue-accueil.active { display: flex; flex-direction: column; justify-content: center; min-height: 100%; }
+
+.carte {
+  background: var(--surface);
+  border: 1px solid var(--bord);
+  border-radius: var(--rayon);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+/* Barre du haut de chaque écran secondaire : un seul geste vers l'accueil,
+   toujours au même endroit. */
+.barre-haut {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.bouton-retour {
+  width: auto;
+  min-width: 60px;
+  min-height: 52px;
+  padding: 10px 16px;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+.barre-haut h1 { margin: 0; flex: 1; }
+
+/* ---------- Boutons ---------- */
+
+button, .bouton {
+  font: inherit;
+  color: var(--texte);
+  background: var(--surface-2);
+  border: 1px solid var(--bord);
+  border-radius: 16px;
+  padding: 16px 18px;
+  min-height: 60px;
+  width: 100%;
+  cursor: pointer;
+  text-align: center;
+  transition: background var(--duree) linear, border-color var(--duree) linear;
+}
+
+button:active { background: var(--bord); }
+
+.bouton-doux {
+  background: var(--accent-fond);
+  border-color: var(--accent);
+  color: var(--texte);
+}
+
+.bouton-accueil {
+  min-height: 130px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  border-radius: 24px;
+  margin-bottom: 16px;
+  padding: 18px;
+  background: var(--surface);
+}
+.bouton-accueil .sous {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--texte-doux);
+  margin-top: 8px;
+}
+
+.bouton-secondaire {
+  background: transparent;
+  border-color: var(--bord);
+  color: var(--texte-doux);
+  font-size: 0.92rem;
+  min-height: 52px;
+}
+
+.bouton-rangee { display: flex; gap: 12px; }
+.bouton-rangee > * { flex: 1; }
+
+/* Un bouton armé attend un second appui avant une action qu'on ne peut pas
+   annuler (supprimer une routine, une tâche...). */
+button.arme {
+  background: var(--fini-fond);
+  border-color: var(--fini);
+  color: var(--texte);
+}
+
+/* ---------- Formulaires ---------- */
+
+label { display: block; margin-bottom: 8px; color: var(--texte-doux); font-size: 0.92rem; }
+
+input[type="text"], input[type="number"] {
+  font: inherit;
+  width: 100%;
+  color: var(--texte);
+  background: var(--surface-2);
+  border: 1px solid var(--bord);
+  border-radius: 14px;
+  padding: 14px;
+  min-height: 56px;
+  margin-bottom: 16px;
+}
+
+/* ---------- Listes d'étapes (formulaire routine / tâche) ---------- */
+
+.ligne-etape {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.ligne-etape input[type="text"] { margin-bottom: 0; flex: 1; }
+.ligne-etape button {
+  width: auto;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 8px;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* ---------- Listes (routines / tâches) ---------- */
+
+.fiche {
+  background: var(--surface);
+  border: 1px solid var(--bord);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.fiche .nom { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
+.fiche .meta { color: var(--texte-doux); font-size: 0.9rem; margin-bottom: 14px; }
+.fiche .bouton-rangee button { min-height: 52px; font-size: 0.92rem; }
+
+.barre-progres {
+  height: 10px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--bord);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.barre-progres > div {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 6px;
+  transition: width var(--duree) ease;
+}
+
+.vide { color: var(--texte-doux); text-align: center; padding: 36px 12px; }
+
+/* Onglets simples "En cours" / "Terminées" */
+.sous-onglets { display: flex; gap: 10px; margin-bottom: 18px; }
+.sous-onglets button {
+  min-height: 52px;
+  font-size: 0.95rem;
+}
+.sous-onglets button[aria-pressed="true"] {
+  background: var(--accent-fond);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- Routine : exécution pas à pas ---------- */
+
+.scene-routine {
+  text-align: center;
+  padding: 30px 10px 10px;
+}
+.scene-routine .compteur {
+  color: var(--texte-doux);
+  font-size: 0.95rem;
+  margin-bottom: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.scene-routine .etape-texte {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.4;
+  min-height: 3.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 26px;
+}
+.bouton-valider {
+  min-height: 90px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  background: var(--accent-fond);
+  border-color: var(--accent);
+  border-radius: 24px;
+  margin-bottom: 14px;
+}
+
+/* ---------- Case à cocher (tâches) ---------- */
+
+.etape-cochable {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bord);
+  cursor: pointer;
+}
+.etape-cochable:last-of-type { border-bottom: none; }
+.etape-cochable input {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  margin: 0;
+}
+.etape-cochable span { flex: 1; font-size: 1rem; }
+.etape-cochable:has(input:checked) span {
+  color: var(--texte-doux);
+  text-decoration: line-through;
+}
+
+.ajout-etape-rapide {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
+.ajout-etape-rapide input { margin-bottom: 0; flex: 1; }
+.ajout-etape-rapide button { width: auto; min-width: 60px; }
+
+/* ---------- Minuteur ---------- */
+
+.scene-minuteur {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0 20px;
+}
+.anneau-minuteur { position: relative; width: 240px; height: 240px; margin-bottom: 10px; }
+.anneau-minuteur svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.anneau-minuteur circle {
+  fill: none;
+  stroke-width: 16;
+}
+.anneau-minuteur .fond { stroke: var(--surface-2); }
+.anneau-minuteur .avancement {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke var(--duree) ease;
+}
+.anneau-minuteur.termine .avancement { stroke: var(--fini); }
+.anneau-minuteur .temps {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--texte);
+}
+.etat-minuteur {
+  text-align: center;
+  color: var(--texte-doux);
+  min-height: 1.6em;
+  margin-bottom: 18px;
+}
+
+.choix { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.choix button {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 12px;
+}
+
+/* Durées rapides du minuteur : une vraie grille 2×2, plutôt qu'un flex qui
+   laisse le 4ᵉ bouton seul sur sa ligne selon la largeur d'écran. */
+#min-choix-duree {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+#min-choix-duree button { width: 100%; min-width: 0; }
+.choix button[aria-pressed="true"] {
+  background: var(--accent-fond);
+  border-color: var(--accent);
+  color: var(--texte);
+  font-weight: 600;
+}
+
+.duree-libre { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; }
+.duree-libre input { margin-bottom: 0; }
+.duree-libre span { color: var(--texte-doux); white-space: nowrap; }
+
+.interrupteur {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+  color: var(--texte);
+  font-size: 0.95rem;
+}
+.interrupteur input { width: 28px; height: 28px; flex-shrink: 0; accent-color: var(--accent); margin: 0; }
+
+/* Message d'état annoncé aux lecteurs d'écran uniquement */
+.annonce {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+.masque { display: none !important; }

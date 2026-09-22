@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cap</title>
+<meta name="description" content="Cap — une aide simple pour démarrer une tâche, s'organiser et ne pas se perdre en route.">
+<meta name="theme-color" content="#171b21">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<!-- Zone de messages pour les lecteurs d'écran (invisible à l'écran) -->
+<p id="annonce" class="annonce" role="status" aria-live="polite"></p>
+
+<main>
+
+  <!-- ========================================================
+       ACCUEIL
+       ======================================================== -->
+  <section id="vue-accueil" class="vue active">
+    <h1 style="text-align:center; margin-bottom:26px">Cap</h1>
+
+    <button type="button" id="btn-accueil-routines" class="bouton-accueil">
+      Mes routines
+      <span class="sous">Suivre les étapes d'un moment de la journée</span>
+    </button>
+
+    <button type="button" id="btn-accueil-taches" class="bouton-accueil">
+      Mes tâches
+      <span class="sous">Découper une tâche en toutes petites étapes</span>
+    </button>
+
+    <button type="button" id="btn-accueil-minuteur" class="bouton-accueil">
+      Minuteur
+      <span class="sous">Un temps qui se voit, pas seulement des chiffres</span>
+    </button>
+  </section>
+
+  <!-- ========================================================
+       ROUTINES — liste
+       ======================================================== -->
+  <section id="vue-routines" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" data-accueil aria-label="Retour à l'accueil">←</button>
+      <h1>Mes routines</h1>
+    </div>
+
+    <button type="button" id="btn-nouvelle-routine" class="bouton-doux" style="margin-bottom:18px">
+      + Créer une routine
+    </button>
+
+    <div id="liste-routines"></div>
+  </section>
+
+  <!-- ========================================================
+       ROUTINES — création / modification
+       ======================================================== -->
+  <section id="vue-routine-form" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" data-accueil aria-label="Retour à l'accueil">←</button>
+      <h1 id="titre-routine-form">Nouvelle routine</h1>
+    </div>
+
+    <label for="rf-nom">Nom de la routine</label>
+    <input type="text" id="rf-nom" placeholder="Par exemple : Routine du matin">
+
+    <h3>Étapes, dans l'ordre</h3>
+    <div id="rf-etapes"></div>
+
+    <button type="button" id="btn-rf-ajouter-etape" class="bouton-secondaire" style="margin-bottom:18px">
+      + Ajouter une étape
+    </button>
+
+    <div class="bouton-rangee">
+      <button type="button" data-accueil>Annuler</button>
+      <button type="button" id="btn-rf-enregistrer" class="bouton-doux">Enregistrer</button>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       ROUTINES — lancer, pas à pas
+       ======================================================== -->
+  <section id="vue-routine-lancer" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" id="btn-rl-retour-haut" aria-label="Retour à l'accueil">←</button>
+      <h1 id="titre-routine-lancer">Routine</h1>
+    </div>
+
+    <div class="scene-routine">
+      <p class="compteur" id="rl-compteur">Étape 1 / 1</p>
+      <p class="etape-texte" id="rl-etape-texte"></p>
+    </div>
+
+    <button type="button" id="btn-rl-valider" class="bouton-valider">C'est fait ✓</button>
+
+    <div class="bouton-rangee">
+      <button type="button" id="btn-rl-precedente" class="bouton-secondaire">← Étape précédente</button>
+      <button type="button" id="btn-rl-arreter" class="bouton-secondaire">Arrêter</button>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       ROUTINES — écran de fin
+       ======================================================== -->
+  <section id="vue-routine-fin" class="vue" hidden>
+    <div style="text-align:center; padding:60px 10px">
+      <h1>Routine terminée</h1>
+      <p style="color:var(--texte-doux)">Bien joué. Elle est prête à être relancée la prochaine fois.</p>
+      <button type="button" data-accueil class="bouton-doux" style="margin-top:20px">Retour à l'accueil</button>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       TÂCHES — liste
+       ======================================================== -->
+  <section id="vue-taches" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" data-accueil aria-label="Retour à l'accueil">←</button>
+      <h1>Mes tâches</h1>
+    </div>
+
+    <button type="button" id="btn-nouvelle-tache" class="bouton-doux" style="margin-bottom:18px">
+      + Nouvelle tâche
+    </button>
+
+    <div class="sous-onglets" role="group" aria-label="Filtrer mes tâches">
+      <button type="button" id="onglet-en-cours" aria-pressed="true">En cours</button>
+      <button type="button" id="onglet-terminees" aria-pressed="false">Terminées</button>
+    </div>
+
+    <div id="liste-taches"></div>
+  </section>
+
+  <!-- ========================================================
+       TÂCHES — création
+       ======================================================== -->
+  <section id="vue-tache-form" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" data-accueil aria-label="Retour à l'accueil">←</button>
+      <h1>Nouvelle tâche</h1>
+    </div>
+
+    <label for="tf-nom">Nom de la tâche</label>
+    <input type="text" id="tf-nom" placeholder="Par exemple : Faire les papiers">
+
+    <h3>Petites étapes</h3>
+    <div id="tf-etapes"></div>
+
+    <button type="button" id="btn-tf-ajouter-etape" class="bouton-secondaire" style="margin-bottom:18px">
+      + Ajouter une étape
+    </button>
+
+    <div class="bouton-rangee">
+      <button type="button" data-accueil>Annuler</button>
+      <button type="button" id="btn-tf-enregistrer" class="bouton-doux">Enregistrer</button>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       TÂCHES — détail (cocher les étapes)
+       ======================================================== -->
+  <section id="vue-tache-detail" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" id="btn-td-retour" aria-label="Retour à mes tâches">←</button>
+      <h1 id="titre-tache-detail">Tâche</h1>
+    </div>
+
+    <p class="meta" id="td-progres"></p>
+    <div class="barre-progres" style="margin-bottom:20px"><div id="td-barre" style="width:0%"></div></div>
+
+    <div id="td-etapes"></div>
+
+    <form id="td-ajout-form" class="ajout-etape-rapide">
+      <input type="text" id="td-nouvelle-etape" placeholder="Ajouter une étape">
+      <button type="submit">+</button>
+    </form>
+
+    <button type="button" id="btn-td-supprimer" class="bouton-secondaire" style="margin-top:24px">
+      Supprimer cette tâche
+    </button>
+  </section>
+
+  <!-- ========================================================
+       MINUTEUR
+       ======================================================== -->
+  <section id="vue-minuteur" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" data-accueil aria-label="Retour à l'accueil">←</button>
+      <h1>Minuteur</h1>
+    </div>
+
+    <div class="scene-minuteur">
+      <div class="anneau-minuteur" id="min-anneau">
+        <svg viewBox="0 0 240 240">
+          <circle class="fond" cx="120" cy="120" r="100"></circle>
+          <circle class="avancement" id="min-cercle" cx="120" cy="120" r="100"></circle>
+        </svg>
+        <div class="temps" id="min-temps">05:00</div>
+      </div>
+      <p class="etat-minuteur" id="min-etat">Choisissez une durée</p>
+    </div>
+
+    <div id="min-reglage-duree">
+      <div class="choix" id="min-choix-duree" role="group" aria-label="Durée rapide">
+        <button type="button" data-min="5">5 min</button>
+        <button type="button" data-min="10">10 min</button>
+        <button type="button" data-min="15">15 min</button>
+        <button type="button" data-min="25">25 min</button>
+      </div>
+      <div class="duree-libre">
+        <input type="number" id="min-libre" min="1" max="180" placeholder="Autre">
+        <span>minutes</span>
+        <button type="button" id="btn-min-libre-valider" style="width:auto; min-width:100px">Valider</button>
+      </div>
+    </div>
+
+    <div class="bouton-rangee" id="min-controles-avant">
+      <button type="button" id="btn-min-demarrer" class="bouton-doux">Démarrer</button>
+    </div>
+
+    <div class="bouton-rangee masque" id="min-controles-en-cours">
+      <button type="button" id="btn-min-pause">Pause</button>
+      <button type="button" id="btn-min-arreter">Arrêter</button>
+    </div>
+
+    <div class="bouton-rangee masque" id="min-controles-fin">
+      <button type="button" id="btn-min-recommencer" class="bouton-doux">Choisir une nouvelle durée</button>
+    </div>
+
+    <label class="interrupteur" for="min-vibration" style="margin-top:10px">
+      <span>Vibration courte à la fin</span>
+      <input type="checkbox" id="min-vibration" checked>
+    </label>
+  </section>
+
+</main>
+
+<script src="./app.js"></script>
+</body>
+</html>
