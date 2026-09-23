@@ -14,8 +14,17 @@ visuel. Pas d'écran de connexion, pas de compte.
 
 - **Aucun compte, aucun appel réseau, aucun traceur, aucune publicité.** Tout
   reste en `localStorage` : rien ne quitte l'appareil.
-- **Aucun blanc pur ni noir pur.** Voir les variables de couleur en haut de
-  `styles.css`.
+- **Aucun blanc pur ni noir pur, aucune couleur vive.** Le public visé
+  compte beaucoup de personnes autistes, dont certaines très sensibles aux
+  couleurs vives. `styles.css` définit plusieurs gammes désaturées
+  (`bleu`, `sauge`, `lavande`, `sable`), chacune en version sombre et
+  claire, choisies dans Réglages et appliquées via `data-mode="<gamme>-
+  <sombre|clair>"` sur `<html>` (voir `themeEffectif()` /
+  `appliquerApparence()` dans `app.js`, et le petit script identique dans
+  le `<head>` de `index.html` qui évite un flash de mauvaises couleurs).
+  Toute nouvelle gamme ajoutée doit rester dans la même plage de
+  saturation et de contraste que les existantes — jamais un accent saturé
+  ou un fond franc.
 - **Animations lentes et régulières**, jamais brusques ;
   `prefers-reduced-motion` pleinement respecté.
 - **Zones tactiles ≥ 60 px.**

@@ -29,7 +29,7 @@ function sauverTaches() {
 }
 
 function chargerReglages() {
-  const defaut = { vibrationMinuteur: true };
+  const defaut = { vibrationMinuteur: true, theme: 'auto', palette: 'bleu' };
   try { return Object.assign(defaut, JSON.parse(localStorage.getItem(CLE_REGLAGES)) || {}); }
   catch (e) { return defaut; }
 }
@@ -102,6 +102,39 @@ function formaterDate(ts) {
   const d = new Date(ts);
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) +
     ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+/* ---------- 3 bis. Apparence : thème et gamme de couleurs ---------- */
+
+// « Automatique » suit le réglage clair/sombre du téléphone ; sinon on
+// applique le choix explicite de la personne.
+function themeEffectif() {
+  if (reglages.theme === 'auto') {
+    return (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'sombre' : 'clair';
+  }
+  return reglages.theme;
+}
+
+// Pose data-mode="<gamme>-<sombre|clair>" sur <html> : c'est ce que lit
+// styles.css. Un script identique, dans le <head> de index.html, fait la
+// même chose avant même que ce fichier soit chargé, pour éviter un flash
+// de mauvaises couleurs à l'ouverture.
+function appliquerApparence() {
+  document.documentElement.dataset.mode = reglages.palette + '-' + themeEffectif();
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    if (bg) meta.setAttribute('content', bg);
+  }
+}
+
+function majAffichageReglages() {
+  document.querySelectorAll('#choix-theme button').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.themeVal === reglages.theme));
+  });
+  document.querySelectorAll('#choix-palette button').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.paletteVal === reglages.palette));
+  });
 }
 
 /* ---------- 4. Navigation entre les écrans ---------- */
@@ -496,6 +529,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-accueil-minuteur').addEventListener('click', () => {
     afficherVue('minuteur');
   });
+  document.getElementById('btn-accueil-reglages').addEventListener('click', () => {
+    majAffichageReglages();
+    afficherVue('reglages');
+  });
 
   // ----- Routines : liste -----
   document.getElementById('btn-nouvelle-routine').addEventListener('click', () => ouvrirFormulaireRoutine(null));
@@ -622,6 +659,32 @@ document.addEventListener('DOMContentLoaded', () => {
   // Réglage initial de l'anneau et du choix de durée par défaut (5 min).
   const btn5 = document.querySelector('#min-choix-duree button[data-min="5"]');
   selectionnerDureeRapide(5, btn5);
+
+  // ----- Réglages : thème et couleurs -----
+  document.getElementById('choix-theme').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-theme-val]');
+    if (!btn) return;
+    reglages.theme = btn.dataset.themeVal;
+    sauverReglages();
+    appliquerApparence();
+    majAffichageReglages();
+  });
+  document.getElementById('choix-palette').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-palette-val]');
+    if (!btn) return;
+    reglages.palette = btn.dataset.paletteVal;
+    sauverReglages();
+    appliquerApparence();
+    majAffichageReglages();
+  });
+  // En mode « Automatique », si la personne change le thème de son
+  // téléphone pendant que Cap est ouvert, on suit sans qu'elle ait à rouvrir l'app.
+  if (window.matchMedia) {
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (reglages.theme === 'auto') appliquerApparence();
+    });
+  }
+  appliquerApparence();
 
   // ----- Service worker : installation hors-ligne -----
   if ('serviceWorker' in navigator) {

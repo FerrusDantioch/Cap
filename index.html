@@ -10,6 +10,23 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
+<!-- Pose le thème et la gamme de couleurs choisis AVANT le premier affichage,
+     pour éviter un flash de mauvaises couleurs le temps qu'app.js s'exécute. -->
+<script>
+(function () {
+  try {
+    var r = JSON.parse(localStorage.getItem('cap_reglages')) || {};
+    var palette = r.palette || 'bleu';
+    var theme = r.theme || 'auto';
+    if (theme === 'auto') {
+      theme = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'sombre' : 'clair';
+    }
+    document.documentElement.dataset.mode = palette + '-' + theme;
+  } catch (e) {
+    document.documentElement.dataset.mode = 'bleu-sombre';
+  }
+})();
+</script>
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -23,6 +40,7 @@
        ACCUEIL
        ======================================================== -->
   <section id="vue-accueil" class="vue active">
+    <button type="button" id="btn-accueil-reglages" class="bouton-reglages-accueil" aria-label="Réglages">⚙</button>
     <h1 style="text-align:center; margin-bottom:26px">Cap</h1>
 
     <button type="button" id="btn-accueil-routines" class="bouton-accueil">
@@ -236,6 +254,46 @@
       <span>Vibration courte à la fin</span>
       <input type="checkbox" id="min-vibration" checked>
     </label>
+  </section>
+
+  <!-- ========================================================
+       RÉGLAGES — thème et couleurs
+       ======================================================== -->
+  <section id="vue-reglages" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" data-accueil aria-label="Retour à l'accueil">←</button>
+      <h1>Réglages</h1>
+    </div>
+
+    <h3>Thème</h3>
+    <div class="choix" id="choix-theme" role="group" aria-label="Thème">
+      <button type="button" data-theme-val="sombre">Sombre</button>
+      <button type="button" data-theme-val="clair">Clair</button>
+      <button type="button" data-theme-val="auto">Automatique</button>
+    </div>
+    <p><small>« Automatique » suit le réglage de votre téléphone.</small></p>
+
+    <h3>Couleurs</h3>
+    <div class="palette-grille" id="choix-palette" role="group" aria-label="Gamme de couleurs">
+      <button type="button" class="palette-carte" data-palette-val="bleu">
+        <span class="pastille" style="background:#6f93a8"></span>
+        Bleu-gris
+      </button>
+      <button type="button" class="palette-carte" data-palette-val="sauge">
+        <span class="pastille" style="background:#7ea8a0"></span>
+        Sauge
+      </button>
+      <button type="button" class="palette-carte" data-palette-val="lavande">
+        <span class="pastille" style="background:#9591c4"></span>
+        Lavande
+      </button>
+      <button type="button" class="palette-carte" data-palette-val="sable">
+        <span class="pastille" style="background:#b89a7a"></span>
+        Sable
+      </button>
+    </div>
+    <p><small>Des teintes volontairement douces et désaturées : jamais de
+       blanc pur, de noir pur, ni de couleur vive.</small></p>
   </section>
 
 </main>
