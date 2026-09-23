@@ -4,9 +4,13 @@
    - aucun blanc pur, aucun noir sur blanc : contrastes doux
    - aucune animation rapide, aucun clignotement
    - zones tactiles très larges (min 60px)
-   - un seul thème calme, sombre par défaut
+   - plusieurs gammes de couleurs, toutes volontairement désaturées :
+     beaucoup de personnes autistes sont sensibles aux couleurs vives,
+     donc même les options de personnalisation restent douces
    ============================================================ */
 
+/* Valeurs par défaut (Bleu-gris, sombre), au cas où le script du <head>
+   n'aurait pas encore posé l'attribut data-mode sur <html>. */
 :root {
   --bg:          #171b21;
   --surface:     #1e242c;
@@ -14,32 +18,79 @@
   --bord:        #333b46;
   --texte:       #d2d8de;   /* gris très clair, jamais #fff */
   --texte-doux:  #96a0ac;
-  --accent:      #6f93a8;   /* bleu-gris doux — la couleur de Cap */
+  --accent:      #6f93a8;
   --accent-fond: #212e35;
   --fini:        #b89a7a;   /* ton chaud et calme, jamais vert vif ni rouge */
   --fini-fond:   #332b22;
   --rayon: 20px;
   --duree: 300ms;           /* toutes les transitions, volontairement lentes */
-
-  /* Sans cette ligne, le navigateur dessine les champs et cases avec son
-     habillage clair par défaut : des carrés blancs sur fond sombre. */
   color-scheme: dark;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg:          #f1eee8;   /* beige papier, jamais #fff */
-    --surface:     #f8f6f1;
-    --surface-2:   #ebe7df;
-    --bord:        #d8d2c7;
-    --texte:       #3b4046;
-    --texte-doux:  #6e757d;
-    --accent:      #4f7086;
-    --accent-fond: #e3eaee;
-    --fini:        #8c6a46;
-    --fini-fond:   #f0e6d8;
-    color-scheme: light;
-  }
+/* ---------- Gammes de couleurs, une paire sombre/clair par gamme ----------
+   Choisi par la personne dans Réglages ; appliqué par app.js via
+   l'attribut data-mode="<gamme>-<sombre|clair>" sur <html>. Chaque paire
+   garde la même construction que Refuge : fonds jamais blancs ni noirs
+   purs, textes jamais blanc pur, un seul accent désaturé. */
+
+html[data-mode="bleu-sombre"] {
+  --bg: #171b21; --surface: #1e242c; --surface-2: #262d37; --bord: #333b46;
+  --texte: #d2d8de; --texte-doux: #96a0ac;
+  --accent: #6f93a8; --accent-fond: #212e35;
+  --fini: #b89a7a; --fini-fond: #332b22;
+  color-scheme: dark;
+}
+html[data-mode="bleu-clair"] {
+  --bg: #eef0f2; --surface: #f7f8f9; --surface-2: #e9ebee; --bord: #d7dbe0;
+  --texte: #3b4046; --texte-doux: #6e757d;
+  --accent: #4f7086; --accent-fond: #e3eaee;
+  --fini: #8c6a46; --fini-fond: #f0e6d8;
+  color-scheme: light;
+}
+
+html[data-mode="sauge-sombre"] {
+  --bg: #171b19; --surface: #1e2620; --surface-2: #262f28; --bord: #333f37;
+  --texte: #d2d8d4; --texte-doux: #96a89e;
+  --accent: #7ea8a0; --accent-fond: #24322f;
+  --fini: #b89a7a; --fini-fond: #332b22;
+  color-scheme: dark;
+}
+html[data-mode="sauge-clair"] {
+  --bg: #eef1ec; --surface: #f6f8f4; --surface-2: #e7ebe3; --bord: #d3dbcd;
+  --texte: #384038; --texte-doux: #69756a;
+  --accent: #5d8579; --accent-fond: #e2ebe6;
+  --fini: #8c6a46; --fini-fond: #f0e6d8;
+  color-scheme: light;
+}
+
+html[data-mode="lavande-sombre"] {
+  --bg: #1a1820; --surface: #211e2b; --surface-2: #2a2636; --bord: #3a3548;
+  --texte: #d8d5de; --texte-doux: #a29cb0;
+  --accent: #9591c4; --accent-fond: #2c2840;
+  --fini: #b89a7a; --fini-fond: #332b22;
+  color-scheme: dark;
+}
+html[data-mode="lavande-clair"] {
+  --bg: #f1eef5; --surface: #f8f6fa; --surface-2: #eae6f0; --bord: #d8d2e2;
+  --texte: #423d4c; --texte-doux: #756e82;
+  --accent: #7871a8; --accent-fond: #e8e4f0;
+  --fini: #8c6a46; --fini-fond: #f0e6d8;
+  color-scheme: light;
+}
+
+html[data-mode="sable-sombre"] {
+  --bg: #1c1815; --surface: #241f1a; --surface-2: #2e2721; --bord: #453a30;
+  --texte: #ded6cc; --texte-doux: #a89c8e;
+  --accent: #b89a7a; --accent-fond: #332b22;
+  --fini: #9591c4; --fini-fond: #2c2840;
+  color-scheme: dark;
+}
+html[data-mode="sable-clair"] {
+  --bg: #f3ece2; --surface: #faf6f0; --surface-2: #ede4d6; --bord: #ddd0bd;
+  --texte: #453a30; --texte-doux: #7d7062;
+  --accent: #8c6a46; --accent-fond: #f0e6d8;
+  --fini: #7871a8; --fini-fond: #e8e4f0;
+  color-scheme: light;
 }
 
 /* ---------- Base ---------- */
@@ -99,7 +150,20 @@ main {
 .vue { display: none; max-width: 640px; width: 100%; margin: 0 auto; }
 .vue.active { display: block; }
 
-#vue-accueil.active { display: flex; flex-direction: column; justify-content: center; min-height: 100%; }
+#vue-accueil.active { display: flex; flex-direction: column; justify-content: center; min-height: 100%; position: relative; }
+
+/* Petit bouton Réglages, discret, dans le coin de l'accueil — pas un
+   4ᵉ gros bouton, pour ne pas surcharger l'écran principal. */
+.bouton-reglages-accueil {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 52px;
+  min-height: 52px;
+  padding: 0;
+  border-radius: 14px;
+  font-size: 1.4rem;
+}
 
 .carte {
   background: var(--surface);
@@ -404,6 +468,35 @@ input[type="text"], input[type="number"] {
   font-size: 0.95rem;
 }
 .interrupteur input { width: 28px; height: 28px; flex-shrink: 0; accent-color: var(--accent); margin: 0; }
+
+/* ---------- Réglages : thème et gammes de couleurs ---------- */
+
+.palette-grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.palette-carte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 96px;
+  padding: 16px 10px;
+}
+.palette-carte .pastille {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--bord);
+  display: block;
+}
+.palette-carte[aria-pressed="true"] {
+  background: var(--accent-fond);
+  border-color: var(--accent);
+  font-weight: 600;
+}
 
 /* Message d'état annoncé aux lecteurs d'écran uniquement */
 .annonce {
