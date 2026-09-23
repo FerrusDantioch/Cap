@@ -29,7 +29,7 @@ function sauverTaches() {
 }
 
 function chargerReglages() {
-  const defaut = { vibrationMinuteur: true, theme: 'auto', palette: 'bleu' };
+  const defaut = { vibrationMinuteur: true, ecranAllumeMinuteur: false, theme: 'auto', palette: 'bleu' };
   try { return Object.assign(defaut, JSON.parse(localStorage.getItem(CLE_REGLAGES)) || {}); }
   catch (e) { return defaut; }
 }
@@ -62,6 +62,13 @@ let minEnCours = false;
 let minEnPause = false;
 let minTimerHandle = null;
 const MIN_CIRCONFERENCE = 2 * Math.PI * 100;
+
+// Verrou « écran allumé » (Wake Lock) : tant qu'on le tient, le téléphone ne
+// se met pas en veille et ne se verrouille pas.
+let verrouEcran = null;
+let demandeEcranEnCours = false;
+let delaiLiberationEcran = null;
+const GRACE_ECRAN_APRES_FIN_MS = 60 * 1000;
 
 /* ---------- 3. Petits outils partagés ---------- */
 
@@ -401,6 +408,41 @@ function rendreDetailTache() {
 
 /* ---------- 8. Minuteur visuel ---------- */
 
+// Une application web ne peut rien afficher sur l'écran verrouillé. La seule
+// façon honnête de garder le minuteur visible est d'empêcher le téléphone de
+// se verrouiller pendant qu'il tourne — sans notification ni son.
+function minuteurVeutEcranAllume() {
+  return reglages.ecranAllumeMinuteur && minEnCours && !minEnPause;
+}
+
+async function demanderEcranAllume() {
+  clearTimeout(delaiLiberationEcran);
+  if (!('wakeLock' in navigator) || verrouEcran || demandeEcranEnCours) return;
+  demandeEcranEnCours = true;
+  try {
+    const verrou = await navigator.wakeLock.request('screen');
+    verrouEcran = verrou;
+    // Android rend le verrou tout seul quand on quitte l'application.
+    verrou.addEventListener('release', () => {
+      if (verrouEcran === verrou) verrouEcran = null;
+    });
+    // Le minuteur a pu être arrêté pendant la demande : on rend aussitôt.
+    if (!minuteurVeutEcranAllume()) libererEcranAllume();
+  } catch (e) {
+    // Refus possible (économiseur de batterie…) : le minuteur marche quand même.
+  } finally {
+    demandeEcranEnCours = false;
+  }
+}
+
+function libererEcranAllume() {
+  clearTimeout(delaiLiberationEcran);
+  if (verrouEcran) {
+    verrouEcran.release().catch(() => {});
+    verrouEcran = null;
+  }
+}
+
 function majTempsTexte(ms) {
   const totalSec = Math.max(0, Math.round(ms / 1000));
   const m = Math.floor(totalSec / 60);
@@ -450,6 +492,7 @@ function demarrerMinuteur() {
   clearInterval(minTimerHandle);
   minTimerHandle = setInterval(tickMinuteur, 250);
   tickMinuteur();
+  if (minuteurVeutEcranAllume()) demanderEcranAllume();
 }
 
 function tickMinuteur() {
@@ -467,11 +510,13 @@ function togglePauseMinuteur() {
     minRestantMsAuPause = minFinTimestamp - Date.now();
     document.getElementById('btn-min-pause').textContent = 'Reprendre';
     document.getElementById('min-etat').textContent = 'En pause';
+    libererEcranAllume();
   } else {
     minEnPause = false;
     minFinTimestamp = Date.now() + minRestantMsAuPause;
     document.getElementById('btn-min-pause').textContent = 'Pause';
     document.getElementById('min-etat').textContent = 'En cours…';
+    if (minuteurVeutEcranAllume()) demanderEcranAllume();
   }
 }
 
@@ -479,6 +524,7 @@ function arreterMinuteur() {
   clearInterval(minTimerHandle);
   minEnCours = false;
   minEnPause = false;
+  libererEcranAllume();
   document.getElementById('min-anneau').classList.remove('termine');
   document.getElementById('min-reglage-duree').classList.remove('masque');
   document.getElementById('min-controles-avant').classList.remove('masque');
@@ -502,6 +548,12 @@ function finMinuteur() {
   // Un seul signal court, jamais de son : juste une vibration brève, et le
   // changement de couleur de l'anneau (voir la classe "termine" en CSS).
   if (reglages.vibrationMinuteur && navigator.vibrate) navigator.vibrate(250);
+  // L'écran reste allumé encore une minute, pour que le changement de
+  // couleur soit vu, puis le téléphone reprend sa mise en veille normale.
+  if (verrouEcran) {
+    clearTimeout(delaiLiberationEcran);
+    delaiLiberationEcran = setTimeout(libererEcranAllume, GRACE_ECRAN_APRES_FIN_MS);
+  }
 }
 
 function recommencerMinuteur() {
@@ -655,6 +707,23 @@ document.addEventListener('DOMContentLoaded', () => {
     sauverReglages();
   });
   document.getElementById('min-vibration').checked = reglages.vibrationMinuteur;
+
+  if (!('wakeLock' in navigator)) {
+    document.getElementById('min-option-ecran').classList.add('masque');
+  }
+  const caseEcran = document.getElementById('min-ecran-allume');
+  caseEcran.checked = reglages.ecranAllumeMinuteur;
+  caseEcran.addEventListener('change', (e) => {
+    reglages.ecranAllumeMinuteur = e.target.checked;
+    sauverReglages();
+    if (minuteurVeutEcranAllume()) demanderEcranAllume();
+    else libererEcranAllume();
+  });
+  // Quitter Cap fait perdre le verrou : on le reprend en revenant, si le
+  // minuteur tourne toujours.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && minuteurVeutEcranAllume()) demanderEcranAllume();
+  });
 
   // Réglage initial de l'anneau et du choix de durée par défaut (5 min).
   const btn5 = document.querySelector('#min-choix-duree button[data-min="5"]');

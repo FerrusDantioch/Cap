@@ -137,5 +137,9 @@ fonctionne pendant que l'écran est ouvert sur Cap ; s'il se termine pendant
 que vous êtes sur un autre écran de l'application, le temps affiché se
 remettra à jour dès que vous reviendrez sur l'écran du minuteur.
 
+Une application web ne peut rien afficher sur l'écran verrouillé. À la
+place, l'option « Garder l'écran allumé pendant le minuteur » empêche le
+téléphone de se verrouiller tant que le minuteur tourne.
+
 Cap n'est pas un dispositif médical et ne remplace pas un accompagnement
 professionnel.

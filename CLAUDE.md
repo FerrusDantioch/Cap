@@ -42,6 +42,14 @@ visuel. Pas d'écran de connexion, pas de compte.
   navigation imbriquée plus complexe.
 - **Suppression = deux appuis.** Utiliser `armerSuppression()` (déjà dans
   `app.js`) pour toute action destructive, jamais un `confirm()` natif.
+- **Minuteur et écran verrouillé.** Une PWA ne peut rien afficher sur
+  l'écran verrouillé. Écartés délibérément : une notification (règle
+  « pas de notification ») et un faux lecteur audio via Media Session
+  (règle « jamais de son »). Retenu : l'option « Garder l'écran allumé
+  pendant le minuteur » (Wake Lock, décochée par défaut). Le verrou n'est
+  tenu que pendant que le minuteur tourne (rendu en pause et à l'arrêt),
+  plus une minute après la fin pour que le changement de couleur soit vu ;
+  il est repris au retour dans l'app (`visibilitychange`).
 - **Minuteur : la fin de compte est basée sur une date d'arrivée**
   (`Date.now() + durée`), jamais sur un simple compteur qui descend à chaque
   tick — sinon changer d'écran ou verrouiller le téléphone fausse le temps

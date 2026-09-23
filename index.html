@@ -254,6 +254,17 @@
       <span>Vibration courte à la fin</span>
       <input type="checkbox" id="min-vibration" checked>
     </label>
+
+    <!-- Masqué par app.js si le navigateur ne sait pas garder l'écran allumé. -->
+    <div id="min-option-ecran">
+      <label class="interrupteur" for="min-ecran-allume">
+        <span>Garder l'écran allumé pendant le minuteur</span>
+        <input type="checkbox" id="min-ecran-allume">
+      </label>
+      <p><small>Le téléphone ne se verrouille pas tant que le minuteur tourne,
+         ni pendant une minute après la fin. Consomme un peu plus de batterie,
+         et ne fonctionne que si Cap est l'application affichée.</small></p>
+    </div>
   </section>
 
   <!-- ========================================================
