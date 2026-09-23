@@ -12,16 +12,16 @@
 /* Valeurs par défaut (Bleu-gris, sombre), au cas où le script du <head>
    n'aurait pas encore posé l'attribut data-mode sur <html>. */
 :root {
-  --bg:          #171b21;
-  --surface:     #1e242c;
-  --surface-2:   #262d37;
-  --bord:        #333b46;
-  --texte:       #d2d8de;   /* gris très clair, jamais #fff */
-  --texte-doux:  #96a0ac;
-  --accent:      #6f93a8;
-  --accent-fond: #212e35;
-  --fini:        #b89a7a;   /* ton chaud et calme, jamais vert vif ni rouge */
-  --fini-fond:   #332b22;
+  --bg:          #161b21;
+  --surface:     #1d242d;
+  --surface-2:   #252e39;
+  --bord:        #344050;
+  --texte:       #d4dae0;   /* gris très clair, jamais #fff */
+  --texte-doux:  #97a2ae;
+  --accent:      #9dbcd0;
+  --accent-fond: #233240;
+  --fini:        #d4b597;   /* ton chaud et calme, jamais vert vif ni rouge */
+  --fini-fond:   #3a2e22;
   --rayon: 20px;
   --duree: 300ms;           /* toutes les transitions, volontairement lentes */
   color-scheme: dark;
@@ -33,11 +33,16 @@
    garde la même construction que Refuge : fonds jamais blancs ni noirs
    purs, textes jamais blanc pur, un seul accent désaturé. */
 
+/* En sombre, les accents sont des pastels (clairs mais peu saturés) : sur
+   fond foncé, une couleur moyenne se confond avec le gris, alors qu'un
+   pastel se distingue sans devenir vif. Les fonds portent aussi une
+   légère teinte de la gamme, pour que chacune se reconnaisse. */
+
 html[data-mode="bleu-sombre"] {
-  --bg: #171b21; --surface: #1e242c; --surface-2: #262d37; --bord: #333b46;
-  --texte: #d2d8de; --texte-doux: #96a0ac;
-  --accent: #6f93a8; --accent-fond: #212e35;
-  --fini: #b89a7a; --fini-fond: #332b22;
+  --bg: #161b21; --surface: #1d242d; --surface-2: #252e39; --bord: #344050;
+  --texte: #d4dae0; --texte-doux: #97a2ae;
+  --accent: #9dbcd0; --accent-fond: #233240;
+  --fini: #d4b597; --fini-fond: #3a2e22;
   color-scheme: dark;
 }
 html[data-mode="bleu-clair"] {
@@ -49,10 +54,10 @@ html[data-mode="bleu-clair"] {
 }
 
 html[data-mode="sauge-sombre"] {
-  --bg: #171b19; --surface: #1e2620; --surface-2: #262f28; --bord: #333f37;
-  --texte: #d2d8d4; --texte-doux: #96a89e;
-  --accent: #7ea8a0; --accent-fond: #24322f;
-  --fini: #b89a7a; --fini-fond: #332b22;
+  --bg: #161c19; --surface: #1d2621; --surface-2: #25302a; --bord: #354539;
+  --texte: #d4dcd6; --texte-doux: #98aa9e;
+  --accent: #a5ccb4; --accent-fond: #243529;
+  --fini: #d4b597; --fini-fond: #3a2e22;
   color-scheme: dark;
 }
 html[data-mode="sauge-clair"] {
@@ -64,10 +69,10 @@ html[data-mode="sauge-clair"] {
 }
 
 html[data-mode="lavande-sombre"] {
-  --bg: #1a1820; --surface: #211e2b; --surface-2: #2a2636; --bord: #3a3548;
-  --texte: #d8d5de; --texte-doux: #a29cb0;
-  --accent: #9591c4; --accent-fond: #2c2840;
-  --fini: #b89a7a; --fini-fond: #332b22;
+  --bg: #1a1822; --surface: #221f2d; --surface-2: #2b2839; --bord: #3d3850;
+  --texte: #dcd8e3; --texte-doux: #a59fb3;
+  --accent: #c0b6e6; --accent-fond: #2f2945;
+  --fini: #d4b597; --fini-fond: #3a2e22;
   color-scheme: dark;
 }
 html[data-mode="lavande-clair"] {
@@ -90,6 +95,54 @@ html[data-mode="sable-clair"] {
   --texte: #453a30; --texte-doux: #7d7062;
   --accent: #8c6a46; --accent-fond: #f0e6d8;
   --fini: #7871a8; --fini-fond: #e8e4f0;
+  color-scheme: light;
+}
+
+/* Gammes chaudes et claires. Pour elles, la couleur de fin de minuteur
+   (--fini) est un ton froid : le changement doit se voir. */
+
+html[data-mode="peche-sombre"] {
+  --bg: #1d1816; --surface: #27201d; --surface-2: #312824; --bord: #4a3b34;
+  --texte: #e6dbd4; --texte-doux: #b09f95;
+  --accent: #ddb8a3; --accent-fond: #3d2b22;
+  --fini: #a5ccb4; --fini-fond: #243529;
+  color-scheme: dark;
+}
+html[data-mode="peche-clair"] {
+  --bg: #f7eee8; --surface: #fcf7f3; --surface-2: #f1e5dc; --bord: #e3d1c4;
+  --texte: #4a3a32; --texte-doux: #806c61;
+  --accent: #a47260; --accent-fond: #f5e2d7;
+  --fini: #5d8579; --fini-fond: #e2ebe6;
+  color-scheme: light;
+}
+
+html[data-mode="miel-sombre"] {
+  --bg: #1c1a15; --surface: #26231c; --surface-2: #302c23; --bord: #484133;
+  --texte: #e3ddd0; --texte-doux: #aca48f;
+  --accent: #d6c19f; --accent-fond: #3a3324;
+  --fini: #9dbcd0; --fini-fond: #233240;
+  color-scheme: dark;
+}
+html[data-mode="miel-clair"] {
+  --bg: #f6f1e4; --surface: #fbf8ef; --surface-2: #efe8d6; --bord: #ded3b9;
+  --texte: #463f2e; --texte-doux: #7d735c;
+  --accent: #8a7748; --accent-fond: #f1e9d2;
+  --fini: #4f7086; --fini-fond: #e3eaee;
+  color-scheme: light;
+}
+
+html[data-mode="rose-sombre"] {
+  --bg: #1d1719; --surface: #271f22; --surface-2: #31272b; --bord: #4a3a40;
+  --texte: #e5d9dd; --texte-doux: #ae9ca3;
+  --accent: #daabb5; --accent-fond: #3d2a30;
+  --fini: #a5ccb4; --fini-fond: #243529;
+  color-scheme: dark;
+}
+html[data-mode="rose-clair"] {
+  --bg: #f6eef0; --surface: #fbf6f7; --surface-2: #efe3e6; --bord: #e0cdd2;
+  --texte: #4a3940; --texte-doux: #806b73;
+  --accent: #a4677a; --accent-fond: #f3e2e7;
+  --fini: #5d8579; --fini-fond: #e2ebe6;
   color-scheme: light;
 }
 
@@ -223,6 +276,10 @@ button:active { background: var(--bord); }
   margin-bottom: 16px;
   padding: 18px;
   background: var(--surface);
+  /* Un mélange doux de l'accent et de la bordure : la gamme choisie se
+     reconnaît sur l'accueil, sans aplat de couleur. Les navigateurs qui ne
+     connaissent pas color-mix gardent simplement la bordure grise. */
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--bord));
 }
 .bouton-accueil .sous {
   display: block;

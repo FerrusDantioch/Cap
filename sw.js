@@ -3,7 +3,7 @@
    installée. Tout est mis en cache la première fois, puis servi depuis le
    téléphone. */
 
-const CACHE = 'cap-v2';
+const CACHE = 'cap-v3';
 
 /* La liste des fichiers indispensables au fonctionnement hors-ligne.
    Si on ajoute un fichier au projet, il faut aussi l'ajouter ici. */
