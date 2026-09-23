@@ -561,6 +561,214 @@ function recommencerMinuteur() {
   arreterMinuteur();
 }
 
+/* ---------- 8 bis. Sauvegarde et restauration ---------- */
+
+// Tout ce que la personne saisit vit dans le localStorage du navigateur.
+// Si les « données du site » sont effacées (nettoyage du cache,
+// réinstallation, nouveau téléphone), tout part avec. Le seul rempart est
+// un fichier rangé dans le téléphone lui-même : on le fabrique ici, et on
+// sait le relire. Le fichier ne quitte jamais l'appareil : il est copié
+// vers le dossier Téléchargements, sans aucun appel réseau.
+//
+// Restaurer n'efface rien de ce qui est déjà là : les routines et les
+// tâches du fichier sont AJOUTÉES, sauf celles qui existent déjà (même
+// identifiant) — restaurer deux fois ne crée donc pas de doublon. Seuls les
+// réglages (thème, couleurs, options du minuteur) sont remplacés.
+
+const CLE_DERNIERE_SAUVEGARDE = 'cap_derniere_sauvegarde';
+
+function messageSauvegarde(texte) {
+  const zone = document.getElementById('restaurer-message');
+  zone.textContent = texte;
+  zone.classList.toggle('masque', !texte);
+}
+
+function formaterJour(ts) {
+  return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function afficherDerniereSauvegarde() {
+  let ts = null;
+  try { ts = Number(localStorage.getItem(CLE_DERNIERE_SAUVEGARDE)) || null; } catch (e) { /* rien */ }
+  document.querySelector('#derniere-sauvegarde small').textContent = ts
+    ? 'Dernière sauvegarde : le ' + formaterJour(ts) + '.'
+    : 'Aucune sauvegarde faite depuis ce téléphone pour l’instant.';
+}
+
+function enregistrerSauvegarde() {
+  const donnees = {
+    app: 'cap',
+    version: 1,
+    exporte: new Date().toISOString(),
+    routines: routines,
+    taches: taches,
+    reglages: reglages
+  };
+
+  // La date dans le nom permet de garder plusieurs sauvegardes côte à côte
+  // sans qu'elles s'écrasent.
+  const d = new Date();
+  const jour = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const nom = 'sauvegarde-cap-' + jour + '.json';
+
+  const lien = document.createElement('a');
+  lien.href = URL.createObjectURL(new Blob([JSON.stringify(donnees, null, 2)], { type: 'application/json' }));
+  lien.download = nom;
+  lien.click();
+  setTimeout(() => URL.revokeObjectURL(lien.href), 2000);
+
+  try { localStorage.setItem(CLE_DERNIERE_SAUVEGARDE, String(Date.now())); } catch (e) { /* rien */ }
+  afficherDerniereSauvegarde();
+  messageSauvegarde('Fichier « ' + nom + ' » créé dans vos Téléchargements. ' +
+    'Vous pouvez aussi le copier ailleurs (clé USB, ordinateur) pour plus de sûreté.');
+  annoncer('Sauvegarde enregistrée.');
+}
+
+// Tout ce qui vient du fichier est vérifié avant d'être gardé : un fichier
+// abîmé ou étranger ne doit jamais empêcher Cap de démarrer ensuite.
+function nettoyerRoutine(r) {
+  if (!r || typeof r !== 'object' || typeof r.nom !== 'string' || !Array.isArray(r.etapes)) return null;
+  const etapes = r.etapes.filter(e => typeof e === 'string');
+  if (!r.nom.trim() || etapes.length === 0) return null;
+  return { id: typeof r.id === 'string' && r.id ? r.id : creerId('r'), nom: r.nom, etapes };
+}
+
+function nettoyerTache(t) {
+  if (!t || typeof t !== 'object' || typeof t.nom !== 'string' || !Array.isArray(t.etapes)) return null;
+  const etapes = t.etapes
+    .filter(e => e && typeof e === 'object' && typeof e.texte === 'string')
+    .map(e => ({ texte: e.texte, faite: e.faite === true }));
+  if (!t.nom.trim() || etapes.length === 0) return null;
+  const tache = {
+    id: typeof t.id === 'string' && t.id ? t.id : creerId('t'),
+    nom: t.nom,
+    etapes,
+    termineeLe: typeof t.termineeLe === 'number' && Number.isFinite(t.termineeLe) ? t.termineeLe : null
+  };
+  majEtatTache(tache);
+  return tache;
+}
+
+function nettoyerReglages(r) {
+  const propre = {};
+  if (typeof r.vibrationMinuteur === 'boolean') propre.vibrationMinuteur = r.vibrationMinuteur;
+  if (typeof r.ecranAllumeMinuteur === 'boolean') propre.ecranAllumeMinuteur = r.ecranAllumeMinuteur;
+  if (['auto', 'sombre', 'clair'].includes(r.theme)) propre.theme = r.theme;
+  const palettes = Array.from(document.querySelectorAll('#choix-palette button')).map(b => b.dataset.paletteVal);
+  if (palettes.includes(r.palette)) propre.palette = r.palette;
+  return propre;
+}
+
+// Renvoie ce qu'il y a à restaurer, ou un texte d'erreur.
+function lireSauvegarde(d) {
+  const etranger = 'Ce fichier ne ressemble pas à une sauvegarde de Cap.';
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return etranger;
+  if (d.app && d.app !== 'cap') {
+    return 'Ce fichier est une sauvegarde d’une autre application (« ' + String(d.app) +
+      ' ») : il ne peut pas être restauré dans Cap.';
+  }
+  if (!['routines', 'taches', 'reglages'].some(cle => cle in d)) return etranger;
+  return {
+    exporte: Date.parse(d.exporte) || null,
+    routines: Array.isArray(d.routines) ? d.routines.map(nettoyerRoutine).filter(Boolean) : [],
+    taches: Array.isArray(d.taches) ? d.taches.map(nettoyerTache).filter(Boolean) : [],
+    reglages: d.reglages && typeof d.reglages === 'object' ? nettoyerReglages(d.reglages) : {}
+  };
+}
+
+function resumeRestauration(r) {
+  const pluriel = (n, un, plusieurs) => n + ' ' + (n > 1 ? plusieurs : un);
+  const contenu = [];
+  if (r.routines.length) contenu.push(pluriel(r.routines.length, 'routine', 'routines'));
+  if (r.taches.length) contenu.push(pluriel(r.taches.length, 'tâche', 'tâches'));
+  const avecReglages = Object.keys(r.reglages).length > 0;
+  if (avecReglages) contenu.push('vos réglages');
+  if (!contenu.length) return null;
+
+  const liste = contenu.length > 1
+    ? contenu.slice(0, -1).join(', ') + ' et ' + contenu[contenu.length - 1]
+    : contenu[0];
+  let texte = (r.exporte ? 'Sauvegarde du ' + formaterJour(r.exporte) : 'Cette sauvegarde') + ' : ' + liste + '. ';
+  if (r.routines.length || r.taches.length) texte += 'Ce qui est déjà sur ce téléphone est gardé, sans doublon. ';
+  if (avecReglages) texte += 'Les réglages actuels seront remplacés par ceux du fichier.';
+  return texte.trim();
+}
+
+let restaurationEnAttente = null;
+
+function fermerConfirmationRestauration() {
+  restaurationEnAttente = null;
+  document.getElementById('restaurer-confirmation').classList.add('masque');
+}
+
+async function lireFichierRestauration(fichier) {
+  fermerConfirmationRestauration();
+  messageSauvegarde('');
+  if (!fichier) return;
+
+  let donnees;
+  try {
+    if (fichier.size > 20 * 1024 * 1024) throw new Error('Fichier trop gros');
+    donnees = JSON.parse(await fichier.text());
+  } catch (e) {
+    messageSauvegarde('Ce fichier n’a pas pu être lu. Choisissez un fichier ' +
+      '« sauvegarde-cap… .json » créé par Cap.');
+    return;
+  }
+
+  const lu = lireSauvegarde(donnees);
+  if (typeof lu === 'string') { messageSauvegarde(lu); return; }
+  const resume = resumeRestauration(lu);
+  if (!resume) { messageSauvegarde('Ce fichier ne contient rien à restaurer.'); return; }
+
+  // Rien n'est écrit avant l'appui sur « Restaurer » : on montre d'abord
+  // ce que contient le fichier.
+  restaurationEnAttente = lu;
+  document.getElementById('restaurer-resume').textContent = resume;
+  document.getElementById('restaurer-confirmation').classList.remove('masque');
+  annoncer(resume);
+}
+
+function confirmerRestauration() {
+  const r = restaurationEnAttente;
+  fermerConfirmationRestauration();
+  if (!r) return;
+
+  const idsRoutines = new Set(routines.map(x => x.id));
+  const nouvellesRoutines = r.routines.filter(x => !idsRoutines.has(x.id));
+  const idsTaches = new Set(taches.map(x => x.id));
+  const nouvellesTaches = r.taches.filter(x => !idsTaches.has(x.id));
+
+  routines = routines.concat(nouvellesRoutines);
+  taches = taches.concat(nouvellesTaches);
+  Object.assign(reglages, r.reglages);
+
+  try {
+    sauverRoutines();
+    sauverTaches();
+    sauverReglages();
+  } catch (e) {
+    messageSauvegarde('La restauration n’a pas pu être enregistrée : la mémoire du navigateur est peut-être pleine.');
+    annoncer('Restauration impossible.');
+    return;
+  }
+
+  // Les écrans se mettent à jour tout de suite, sans recharger Cap.
+  appliquerApparence();
+  majAffichageReglages();
+  document.getElementById('min-vibration').checked = reglages.vibrationMinuteur;
+  document.getElementById('min-ecran-allume').checked = reglages.ecranAllumeMinuteur;
+
+  const n1 = nouvellesRoutines.length;
+  const n2 = nouvellesTaches.length;
+  const bilan = 'Restauration terminée : ' +
+    n1 + (n1 > 1 ? ' routines ajoutées, ' : ' routine ajoutée, ') +
+    n2 + (n2 > 1 ? ' tâches ajoutées' : ' tâche ajoutée') +
+    (Object.keys(r.reglages).length ? ', réglages rétablis.' : '.');
+  messageSauvegarde(bilan);
+  annoncer(bilan);
+}
+
 /* ---------- 9. Mise en place des écouteurs, au chargement ---------- */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -754,6 +962,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   appliquerApparence();
+
+  // ----- Réglages : sauvegarde et restauration -----
+  document.getElementById('btn-sauvegarder').addEventListener('click', enregistrerSauvegarde);
+  document.getElementById('btn-restaurer').addEventListener('click', () => {
+    const champ = document.getElementById('fichier-restaurer');
+    champ.value = '';   // pour pouvoir rechoisir le même fichier
+    champ.click();
+  });
+  document.getElementById('fichier-restaurer').addEventListener('change', (e) => {
+    lireFichierRestauration(e.target.files && e.target.files[0]);
+  });
+  document.getElementById('btn-restaurer-annuler').addEventListener('click', () => {
+    fermerConfirmationRestauration();
+    annoncer('Restauration annulée.');
+  });
+  document.getElementById('btn-restaurer-confirmer').addEventListener('click', confirmerRestauration);
+  afficherDerniereSauvegarde();
 
   // ----- Service worker : installation hors-ligne -----
   if ('serviceWorker' in navigator) {
