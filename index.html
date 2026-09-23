@@ -317,6 +317,32 @@
     </div>
     <p><small>Des teintes volontairement douces et désaturées : jamais de
        blanc pur, de noir pur, ni de couleur vive.</small></p>
+
+    <h3 style="margin-top:24px">Sauvegarde de mes données</h3>
+    <p><small>Vos routines, vos tâches et vos réglages sont gardés dans le
+       navigateur de ce téléphone. Si ses données sont effacées (nettoyage du
+       cache, réinstallation, changement de téléphone), tout disparaît. Un
+       fichier de sauvegarde, rangé dans le téléphone, permet de tout
+       retrouver.</small></p>
+
+    <button type="button" id="btn-sauvegarder" class="bouton-doux" style="margin-bottom:12px">
+      Enregistrer une sauvegarde
+    </button>
+    <p id="derniere-sauvegarde"><small></small></p>
+
+    <button type="button" id="btn-restaurer">Restaurer une sauvegarde</button>
+    <!-- Le vrai sélecteur de fichier est invisible : le bouton ci-dessus,
+         plus grand et plus lisible, l'ouvre à sa place. -->
+    <input type="file" id="fichier-restaurer" accept=".json,application/json" hidden>
+
+    <div id="restaurer-confirmation" class="carte masque" style="margin-top:16px">
+      <p id="restaurer-resume" style="margin-top:0"></p>
+      <div class="bouton-rangee">
+        <button type="button" id="btn-restaurer-annuler">Annuler</button>
+        <button type="button" id="btn-restaurer-confirmer" class="bouton-doux">Restaurer</button>
+      </div>
+    </div>
+    <p id="restaurer-message" class="carte masque" role="status" style="margin-top:16px"></p>
   </section>
 
 </main>
