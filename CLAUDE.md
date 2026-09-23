@@ -17,8 +17,10 @@ visuel. Pas d'écran de connexion, pas de compte.
 - **Aucun blanc pur ni noir pur, aucune couleur vive.** Le public visé
   compte beaucoup de personnes autistes, dont certaines très sensibles aux
   couleurs vives. `styles.css` définit plusieurs gammes désaturées
-  (`bleu`, `sauge`, `lavande`, `sable`), chacune en version sombre et
-  claire, choisies dans Réglages et appliquées via `data-mode="<gamme>-
+  (froides : `bleu`, `sauge`, `lavande` ; chaudes : `sable`, `peche`,
+  `miel`, `rose`), chacune en version sombre et claire. En sombre, les
+  accents sont des pastels (clairs, peu saturés) pour rester lisibles sur
+  fond foncé. Choisies dans Réglages et appliquées via `data-mode="<gamme>-
   <sombre|clair>"` sur `<html>` (voir `themeEffectif()` /
   `appliquerApparence()` dans `app.js`, et le petit script identique dans
   le `<head>` de `index.html` qui évite un flash de mauvaises couleurs).
