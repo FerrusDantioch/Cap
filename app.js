@@ -986,4 +986,15 @@ document.addEventListener('DOMContentLoaded', () => {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     });
   }
+
+  // ----- Stockage persistant -----
+  // Par défaut, le navigateur peut effacer de lui-même la copie hors-ligne
+  // (et les routines/tâches) s'il manque de place ou si l'app est peu
+  // utilisée. persist() lui demande de les garder. S'il refuse, rien ne
+  // change : l'app marche comme avant.
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persisted()
+      .then((dejaPersistant) => dejaPersistant || navigator.storage.persist())
+      .catch(() => {});
+  }
 });
