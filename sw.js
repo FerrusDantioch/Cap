@@ -3,7 +3,7 @@
    installée. Tout est mis en cache la première fois, puis servi depuis le
    téléphone. */
 
-const CACHE = 'cap-v5';
+const CACHE = 'cap-v6';
 
 /* La liste des fichiers indispensables au fonctionnement hors-ligne.
    Si on ajoute un fichier au projet, il faut aussi l'ajouter ici. */
@@ -17,11 +17,15 @@ const FICHIERS = [
   './icons/icon-512.png'
 ];
 
-/* 1. Installation : on télécharge et on range tout dans le cache. */
+/* 1. Installation : on télécharge et on range tout dans le cache.
+      { cache: 'reload' } oblige à reprendre chaque fichier sur le serveur,
+      sans passer par le petit cache du navigateur (GitHub Pages le garde
+      10 minutes) : sinon, deux mises à jour publiées coup sur coup
+      pourraient ranger d'anciens fichiers sous le nouveau numéro de version. */
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE)
-      .then((c) => c.addAll(FICHIERS))
+      .then((c) => c.addAll(FICHIERS.map((f) => new Request(f, { cache: 'reload' }))))
       .then(() => self.skipWaiting())
   );
 });
