@@ -21,24 +21,31 @@ de commande — exactement comme pour Refuge.
 
 ### 2. Envoyer les fichiers
 
-1. Décompressez `cap-a-plat.zip` sur votre téléphone
+L'application est faite de **7 fichiers** : 5 à la racine du dépôt
+(`index.html`, `styles.css`, `app.js`, `sw.js`, `manifest.json`) et
+2 icônes rangées dans un dossier **`icons/`** (`icon-192.png`,
+`icon-512.png`). Le code cherche les icônes dans ce dossier : si elles
+sont ailleurs, l'icône manque **et le mode hors-ligne ne s'installe pas**.
+
+1. Décompressez l'archive sur votre téléphone
    (Gestionnaire de fichiers → appui long sur le zip → **Extraire**).
 2. Sur la page de votre dépôt, touchez **Add file** → **Upload files**.
    *Si vous ne voyez pas ce bouton : menu ⋮ de Chrome → cochez
    « Version pour ordinateur ».*
-3. Touchez **choose your files**, ouvrez le dossier décompressé, puis
-   **sélectionnez les 7 fichiers** (appui long sur le premier, puis touchez
-   les autres).
-4. Descendez, touchez **Commit changes**.
+3. Touchez **choose your files** et sélectionnez les **5 fichiers de la
+   racine** (appui long sur le premier, puis touchez les autres).
+   Descendez, touchez **Commit changes**.
+4. Pour les icônes, l'envoi depuis un téléphone ne sait pas créer de
+   dossier. Il faut donc d'abord le créer avec un petit fichier texte :
+   **Add file** → **Create new file**, tapez `icons/LISEZMOI.txt` comme
+   nom (le `/` crée le dossier), écrivez un mot quelconque dedans, puis
+   **Commit changes**.
+5. Ouvrez le dossier `icons` qui vient d'apparaître, puis **Add file** →
+   **Upload files** : les 2 icônes envoyées depuis ce dossier y sont
+   rangées. **Commit changes**.
 
-> ⚠️ Les fichiers doivent être **à la racine** du dépôt, pas dans un
-> sous-dossier. C'est pour cela que cette archive n'a pas de dossier `icons/`.
-> L'envoi depuis un téléphone ne sait pas créer de sous-dossier : prenez
-> toujours l'archive **à plat** (`cap-a-plat.zip`).
->
-> L'autre archive, `cap-avec-dossier-icons.zip`, range les deux icônes dans
-> un sous-dossier `icons/` — plus propre, mais seulement utilisable depuis un
-> ordinateur (ligne de commande `git`, ou GitHub Desktop).
+> ⚠️ Les 5 premiers fichiers doivent être **à la racine** du dépôt, pas
+> dans un sous-dossier.
 
 ### 3. Activer GitHub Pages
 
@@ -90,8 +97,9 @@ Si Cap est déjà en ligne et que vous voulez installer une nouvelle version :
 
 1. Décompressez la nouvelle archive sur le téléphone.
 2. Sur votre dépôt GitHub : **Add file** → **Upload files**.
-3. Sélectionnez les **mêmes 7 fichiers** que la première fois. GitHub
-   **remplace** les anciens automatiquement : il n'y a rien à supprimer.
+3. Sélectionnez les fichiers modifiés. GitHub **remplace** les anciens
+   automatiquement : il n'y a rien à supprimer. Une icône modifiée
+   s'envoie depuis le dossier `icons` (ouvrez-le avant **Add file**).
 4. **Commit changes**, puis attendez 1 à 2 minutes.
 5. Sur le téléphone, ouvrez l'application et **fermez-la complètement**
    (bouton carré d'Android → balayer la fenêtre), puis rouvrez-la. La nouvelle
@@ -111,7 +119,7 @@ vivent dans le téléphone, pas dans les fichiers du dépôt.
 | `app.js` | Le comportement : routines, tâches, minuteur |
 | `sw.js` | Le mode hors-ligne |
 | `manifest.json` | Nom et icône de l'application |
-| `icon-192.png` `icon-512.png` | Les icônes |
+| `icons/icon-192.png` `icons/icon-512.png` | Les icônes (dans le dossier `icons`) |
 
 Tout le code est commenté en français.
 
@@ -121,11 +129,12 @@ Tout le code est commenté en français.
 
 | Symptôme | Cause probable | Solution |
 |---|---|---|
-| Page blanche | Fichiers dans un sous-dossier | Les fichiers doivent être à la racine du dépôt (archive « à plat ») |
+| Page blanche | Fichiers dans un sous-dossier | Les 5 fichiers principaux doivent être à la racine du dépôt (seules les icônes vont dans `icons/`) |
 | Erreur 404 | Pages pas encore publié | Attendre 2 min, recharger |
 | Pas de « Ajouter à l'écran d'accueil » | Adresse en `http://` | L'adresse GitHub Pages est en `https://`, vérifiez-la |
 | Une modification n'apparaît pas | Cache du service worker | Incrémenter `CACHE` dans `sw.js` |
 | Le style a disparu | Un fichier manquant à l'envoi | Vérifier que les 7 fichiers sont bien là |
+| L'icône manque, pas de mode hors-ligne | Icônes hors du dossier `icons/` | Les ranger dans `icons/` (voir étape 2) |
 
 ---
 

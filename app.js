@@ -97,6 +97,10 @@ function armerSuppression(bouton, texteArme, action) {
     return;
   }
   clearTimeout(bouton._minuteurArme);
+  // On remet le bouton dans son état normal AVANT l'action : un bouton qui
+  // reste affiché (comme « Supprimer cette tâche ») ne doit pas rester armé
+  // pour la tâche suivante, sinon un seul appui suffirait à la supprimer.
+  desarmerBouton(bouton);
   action();
 }
 function desarmerBouton(bouton) {
@@ -376,6 +380,11 @@ function enregistrerTache() {
 function ouvrirTache(id) {
   tacheOuverteId = id;
   const t = taches.find(x => x.id === id);
+  // Si le bouton a été armé sur une autre tâche il y a moins de 4 secondes,
+  // on le désarme : chaque tâche repart avec ses deux appuis.
+  const boutonSupprimer = document.getElementById('btn-td-supprimer');
+  clearTimeout(boutonSupprimer._minuteurArme);
+  desarmerBouton(boutonSupprimer);
   document.getElementById('titre-tache-detail').textContent = t.nom;
   document.getElementById('td-nouvelle-etape').value = '';
   rendreDetailTache();
@@ -466,16 +475,21 @@ function selectionnerDureeRapide(minutes, boutonSource) {
   if (!minEnCours) { majTempsTexte(minDureeMs); majAnneau(1); }
 }
 
+// Renvoie true si la durée tapée a été retenue, false sinon.
 function validerDureeLibre() {
   const val = parseInt(document.getElementById('min-libre').value, 10);
-  if (!val || val < 1) { annoncer('Entrez un nombre de minutes valable.'); return; }
+  if (!val || val < 1) { annoncer('Entrez un nombre de minutes valable.'); return false; }
   const minutes = Math.min(val, 180);
   minDureeMs = minutes * 60 * 1000;
   document.querySelectorAll('#min-choix-duree button').forEach(b => b.setAttribute('aria-pressed', 'false'));
   if (!minEnCours) { majTempsTexte(minDureeMs); majAnneau(1); }
+  return true;
 }
 
 function demarrerMinuteur() {
+  // Une durée tapée dans « Autre » sans avoir appuyé sur « Valider » compte
+  // quand même : sinon on lancerait l'ancienne durée sans prévenir.
+  if (document.getElementById('min-libre').value.trim() !== '' && !validerDureeLibre()) return;
   if (minDureeMs <= 0) return;
   minEnCours = true;
   minEnPause = false;
@@ -626,11 +640,19 @@ function enregistrerSauvegarde() {
 
 // Tout ce qui vient du fichier est vérifié avant d'être gardé : un fichier
 // abîmé ou étranger ne doit jamais empêcher Cap de démarrer ensuite.
+
+// Un identifiant est réécrit tel quel dans la page (data-id="…") : on
+// n'accepte que des lettres, chiffres, « _ » et « - ». Un identifiant
+// bizarre (guillemets, chevrons…) pourrait sinon y glisser du code.
+function idPropre(id, prefixe) {
+  return typeof id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(id) ? id : creerId(prefixe);
+}
+
 function nettoyerRoutine(r) {
   if (!r || typeof r !== 'object' || typeof r.nom !== 'string' || !Array.isArray(r.etapes)) return null;
   const etapes = r.etapes.filter(e => typeof e === 'string');
   if (!r.nom.trim() || etapes.length === 0) return null;
-  return { id: typeof r.id === 'string' && r.id ? r.id : creerId('r'), nom: r.nom, etapes };
+  return { id: idPropre(r.id, 'r'), nom: r.nom, etapes };
 }
 
 function nettoyerTache(t) {
@@ -640,7 +662,7 @@ function nettoyerTache(t) {
     .map(e => ({ texte: e.texte, faite: e.faite === true }));
   if (!t.nom.trim() || etapes.length === 0) return null;
   const tache = {
-    id: typeof t.id === 'string' && t.id ? t.id : creerId('t'),
+    id: idPropre(t.id, 't'),
     nom: t.nom,
     etapes,
     termineeLe: typeof t.termineeLe === 'number' && Number.isFinite(t.termineeLe) ? t.termineeLe : null
@@ -871,11 +893,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const t = taches.find(x => x.id === tacheOuverteId);
     const idx = parseInt(e.target.dataset.idx, 10);
     t.etapes[idx].faite = e.target.checked;
-    const finieAvant = estTermineeTache(t);
+    const finie = estTermineeTache(t);
     majEtatTache(t);
     sauverTaches();
     rendreDetailTache();
-    if (finieAvant) annoncer('Tâche terminée : ' + t.nom);
+    if (finie) annoncer('Tâche terminée : ' + t.nom);
   });
   document.getElementById('td-ajout-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -906,6 +928,10 @@ document.addEventListener('DOMContentLoaded', () => {
     selectionnerDureeRapide(parseInt(btn.dataset.min, 10), btn);
   });
   document.getElementById('btn-min-libre-valider').addEventListener('click', validerDureeLibre);
+  // La touche « Entrée » (ou « OK » du clavier du téléphone) valide aussi.
+  document.getElementById('min-libre').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); validerDureeLibre(); }
+  });
   document.getElementById('btn-min-demarrer').addEventListener('click', demarrerMinuteur);
   document.getElementById('btn-min-pause').addEventListener('click', togglePauseMinuteur);
   document.getElementById('btn-min-arreter').addEventListener('click', arreterMinuteur);
