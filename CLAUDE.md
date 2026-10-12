@@ -8,10 +8,38 @@ distincte. L'utilisatrice ou l'utilisateur est novice en programmation :
 garder les commentaires en français simple, éviter le jargon.
 
 Trois fonctions : Routines pas à pas, Tâches en petites étapes, Minuteur
-visuel. Pas d'écran de connexion, pas de compte.
+visuel. Pas d'écran de connexion, pas de compte. Plusieurs fonctions
+viennent de suggestions de personnes autistes : savoir ce qui vient
+(« Ensuite : … », liste des étapes repliable), reprendre une routine
+interrompue, passer une étape sans culpabilité, images d'étapes, durée
+prévue par étape, préavis visuel du minuteur, tâche du jour épinglée sur
+l'accueil, mode « une étape à la fois ».
+
+## Données (localStorage)
+
+- `cap_routines` : `[{ id, nom, etapes: [{ texte, image?, minutes? }] }]`.
+  Les anciennes versions rangeaient les étapes en simple texte :
+  `nettoyerRoutine()` accepte toujours les deux formes, au chargement comme
+  à la restauration. Ne jamais supprimer cette compatibilité.
+- `cap_taches` : `[{ id, nom, etapes: [{ texte, faite, image? }],
+  termineeLe, epinglee? }]`. Une seule tâche peut être épinglée
+  (`unSeulEpinglage()`).
+- `cap_routine_en_cours` : `{ id, index, passees }`, la routine commencée.
+  Remise à zéro si la routine est modifiée ou supprimée.
+- `cap_reglages` : thème, gamme, `echelle` (taille du texte), options du
+  minuteur, `tacheUneEtape`.
+- Sauvegarde : fichier version 2 ; un fichier version 1 se restaure toujours.
 
 ## Contraintes de conception à préserver
 
+- **Tutoiement : l'application tutoie la personne**, comme Refuge. Tout
+  texte qui s'adresse à elle (boutons, explications, messages d'erreur,
+  annonces pour lecteur d'écran) dit « tu » : « Choisis une durée »,
+  « Donne un nom à la routine ».
+- **Images d'étapes : des émojis désaturés.** Ils sont choisis dans la
+  liste `PICTOS` d'`app.js` et toujours affichés avec la classe `.picto`,
+  qui les désature (`filter: saturate(…)`) pour respecter la règle
+  « aucune couleur vive ». Toute nouvelle image passe par cette classe.
 - **Aucun compte, aucun appel réseau, aucun traceur, aucune publicité.** Tout
   reste en `localStorage` : rien ne quitte l'appareil.
 - **Aucun blanc pur ni noir pur, aucune couleur vive.** Le public visé
@@ -32,16 +60,25 @@ visuel. Pas d'écran de connexion, pas de compte.
 - **Zones tactiles ≥ 60 px.**
 - **Jamais de son.** Le seul signal de fin de minuteur est une vibration
   courte (optionnelle, réglable) et un changement de couleur de l'anneau —
-  pas de fichier audio, pas d'API `Audio`.
+  pas de fichier audio, pas d'API `Audio`. La même vibration (même réglage)
+  marque la fin du temps prévu pour une étape de routine. Le préavis avant
+  la fin est **uniquement visuel** : teinte de l'anneau qui glisse
+  lentement, et temps restant écrit en mots, à la minute près.
+- **Ne jamais pousser à passer à la suite.** Quand le temps prévu d'une
+  étape est écoulé, l'étape reste affichée : c'est la personne qui décide.
+  Pas de séries de jours, de points ni de badges : ça crée de la pression
+  et de la culpabilité.
 - **Pas de notifications programmées.** Peu fiable sur Android quand l'app
   est fermée ; volontairement laissé de côté pour l'instant. Ne pas ajouter
   `Notification` ou `setTimeout`/`setInterval` de longue durée qui suppose
   que l'app reste ouverte en arrière-plan au-delà de l'onglet actif.
 - **Retour à l'accueil en un geste** depuis n'importe quel écran (bouton
   `←` en haut de chaque vue secondaire). Ne pas introduire de menu ou de
-  navigation imbriquée plus complexe.
+  navigation imbriquée plus complexe. Pendant une routine, `←` garde la
+  progression ; l'accueil propose alors « Reprendre ».
 - **Suppression = deux appuis.** Utiliser `armerSuppression()` (déjà dans
   `app.js`) pour toute action destructive, jamais un `confirm()` natif.
+  « Arrêter la routine » (qui fait perdre la progression) suit la même règle.
 - **Minuteur et écran verrouillé.** Une PWA ne peut rien afficher sur
   l'écran verrouillé. Écartés délibérément : une notification (règle
   « pas de notification ») et un faux lecteur audio via Media Session
@@ -62,7 +99,7 @@ Après toute modification d'un fichier **mis en cache** (`index.html`,
 haut de `sw.js` :
 
 ```js
-const CACHE = 'cap-v1';   // → v2
+const CACHE = 'cap-v8';   // → v9
 ```
 
 Sans ce changement, le navigateur ne retélécharge rien. En cas d'**ajout de
