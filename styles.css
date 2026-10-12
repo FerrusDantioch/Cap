@@ -156,10 +156,15 @@ html, body {
   background: var(--bg);
   color: var(--texte);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 17px;
   line-height: 1.6;
   overscroll-behavior: none;
 }
+
+/* Taille du texte choisie dans Réglages : --echelle vaut 0.9, 1, 1.15 ou
+   1.35. Presque toutes les tailles de ce fichier sont en « rem » : elles
+   suivent toutes ce seul réglage. */
+html { font-size: calc(17px * var(--echelle, 1)); }
+body { font-size: 1rem; }
 
 body {
   min-height: 100dvh;
@@ -340,21 +345,66 @@ input[type="text"], input[type="number"] {
 
 /* ---------- Listes d'étapes (formulaire routine / tâche) ---------- */
 
+/* Chaque étape est une petite carte sur deux rangées :
+     [image] [texte de l'étape] [✕]
+     [durée prévue]         [↑] [↓]   */
 .ligne-etape {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  background: var(--surface);
+  border: 1px solid var(--bord);
+  border-radius: 16px;
+  padding: 10px;
+  margin-bottom: 12px;
 }
-.ligne-etape input[type="text"] { margin-bottom: 0; flex: 1; }
+.ligne-haut, .ligne-bas { display: flex; align-items: center; gap: 8px; }
+.ligne-bas { margin-top: 8px; }
+.ligne-bas .espace { flex: 1; }
+.ligne-etape input[type="text"] { margin-bottom: 0; flex: 1; min-width: 0; }
 .ligne-etape button {
   width: auto;
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 60px;
+  min-height: 60px;
   padding: 8px;
   font-size: 1.1rem;
   flex-shrink: 0;
 }
+.ligne-etape .bouton-picto { font-size: 1.7rem; line-height: 1; }
+.ligne-etape .bouton-picto.vide { font-size: 0.8rem; color: var(--texte-doux); }
+
+select {
+  font: inherit;
+  color: var(--texte);
+  background: var(--surface-2);
+  border: 1px solid var(--bord);
+  border-radius: 14px;
+  padding: 0 12px;
+  min-height: 60px;
+}
+.ligne-bas select { flex: 1; min-width: 0; }
+
+/* Le choix d'images, qui s'ouvre sous l'étape concernée. */
+.choix-image {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bord);
+}
+.choix-image button {
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  padding: 0;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+.choix-image button[aria-pressed="true"] { background: var(--accent-fond); border-color: var(--accent); }
+.choix-image .aucune { grid-column: 1 / -1; font-size: 0.95rem; }
+
+/* Les images d'étape sont des émojis, souvent très colorés : on les
+   désature pour respecter la règle « aucune couleur vive ». */
+.picto { filter: saturate(0.35); }
+span.picto { display: inline-block; margin-right: 0.45em; }
 
 /* ---------- Listes (routines / tâches) ---------- */
 
@@ -386,6 +436,37 @@ input[type="text"], input[type="number"] {
 
 .vide { color: var(--texte-doux); text-align: center; padding: 36px 12px; }
 
+/* Liste des étapes repliable (« Voir les étapes ») : on sait ce qui vient
+   avant même de commencer. */
+details.apercu {
+  background: var(--surface-2);
+  border: 1px solid var(--bord);
+  border-radius: 14px;
+  margin-bottom: 14px;
+}
+details.apercu summary {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  cursor: pointer;
+  color: var(--texte-doux);
+  list-style: none;
+}
+details.apercu summary::-webkit-details-marker { display: none; }
+details.apercu summary::before {
+  content: '▸';
+  margin-right: 10px;
+  transition: transform var(--duree) ease;
+}
+details.apercu[open] summary::before { transform: rotate(90deg); }
+details.apercu ol { margin: 0; padding: 0 16px 14px 42px; }
+details.apercu li { padding: 5px 0; }
+details.apercu li.actuelle { font-weight: 600; }
+details.apercu li.faite, details.apercu li.passee { color: var(--texte-doux); }
+details.apercu li.faite { text-decoration: line-through; }
+.duree { color: var(--texte-doux); font-size: 0.88rem; }
+
 /* Onglets simples "En cours" / "Terminées" */
 .sous-onglets { display: flex; gap: 10px; margin-bottom: 18px; }
 .sous-onglets button {
@@ -410,7 +491,7 @@ input[type="text"], input[type="number"] {
   margin-bottom: 14px;
   font-variant-numeric: tabular-nums;
 }
-.scene-routine .etape-texte {
+.etape-texte {
   font-size: 1.6rem;
   font-weight: 600;
   line-height: 1.4;
@@ -418,8 +499,33 @@ input[type="text"], input[type="number"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 26px;
+  text-align: center;
+  margin-bottom: 18px;
 }
+/* La grande image de l'étape, au-dessus de son texte. */
+.etape-image {
+  font-size: 3.2rem;
+  line-height: 1.2;
+  text-align: center;
+  margin-bottom: 4px;
+}
+.scene-routine .ensuite {
+  color: var(--texte-doux);
+  font-size: 0.95rem;
+  min-height: 1.6em;
+  margin-bottom: 22px;
+}
+
+/* Durée prévue d'une étape : une barre qui se vide doucement. Une fois le
+   temps écoulé, elle se remplit de la couleur de fin, sans clignoter. */
+.minuteur-etape { max-width: 360px; margin: 0 auto 14px; }
+.minuteur-etape p { color: var(--texte-doux); font-size: 0.95rem; margin: 6px 0 0; }
+.minuteur-etape .barre-progres > div { transition: width 1s linear, background var(--duree) ease; }
+.minuteur-etape.termine .barre-progres > div { background: var(--fini); }
+
+/* Tâche en mode « une étape à la fois ». */
+.une-etape { text-align: center; padding: 10px 0 6px; }
+.une-etape .etape-texte { margin-bottom: 22px; }
 .bouton-valider {
   min-height: 90px;
   font-size: 1.2rem;
@@ -483,6 +589,13 @@ input[type="text"], input[type="number"] {
   stroke-linecap: round;
   transition: stroke-dashoffset 1s linear, stroke var(--duree) ease;
 }
+/* Préavis : l'anneau glisse lentement (4 s) vers une teinte entre l'accent
+   et la couleur de fin. Les navigateurs sans color-mix gardent l'accent :
+   le temps restant écrit en mots suffit alors. */
+.anneau-minuteur.bientot .avancement {
+  stroke: color-mix(in srgb, var(--accent) 45%, var(--fini));
+  transition: stroke-dashoffset 1s linear, stroke 4s ease;
+}
 .anneau-minuteur.termine .avancement { stroke: var(--fini); }
 .anneau-minuteur .temps {
   position: absolute;
@@ -500,6 +613,13 @@ input[type="text"], input[type="number"] {
   color: var(--texte-doux);
   min-height: 1.6em;
   margin-bottom: 18px;
+}
+.nom-minuteur {
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
 }
 
 .choix { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
@@ -568,6 +688,36 @@ input[type="text"], input[type="number"] {
   border-color: var(--accent);
   font-weight: 600;
 }
+
+/* ---------- Accueil : ce qui est en cours, tâche du jour, lien Refuge ---------- */
+
+.bouton-en-cours {
+  text-align: left;
+  margin-bottom: 12px;
+  background: var(--accent-fond);
+  border-color: var(--accent);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.bouton-en-cours .sous {
+  display: block;
+  font-weight: 400;
+  font-size: 0.88rem;
+  color: var(--texte-doux);
+  margin-top: 4px;
+}
+
+.tache-du-jour h2 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--texte-doux);
+  margin-bottom: 6px;
+}
+.tache-du-jour .nom { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; overflow-wrap: anywhere; }
+.tdj-etape { margin-bottom: 14px; overflow-wrap: anywhere; }
+.tdj-etape .intro { color: var(--texte-doux); }
+
+.lien-refuge { text-align: center; margin: 4px 0 0; }
 
 /* Message d'état annoncé aux lecteurs d'écran uniquement */
 .annonce {
