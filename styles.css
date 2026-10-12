@@ -183,6 +183,20 @@ h3 { font-size: 1rem; color: var(--texte-doux); font-weight: 600; }
 p  { margin: 0 0 14px; }
 small { font-size: 0.85rem; color: var(--texte-doux); }
 
+/* Lien en texte simple (section « À propos ») : même couleur douce que le
+   texte autour, juste souligné, jamais le bleu vif du navigateur. La
+   hauteur minimale garde une zone tactile de 60 px, comme partout ailleurs.
+   overflow-wrap : une adresse longue passe à la ligne sur petit écran. */
+.lien-discret {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 60px;
+  overflow-wrap: anywhere;
+}
+
 :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
