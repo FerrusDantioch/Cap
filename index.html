@@ -10,8 +10,9 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
-<!-- Pose le thème et la gamme de couleurs choisis AVANT le premier affichage,
-     pour éviter un flash de mauvaises couleurs le temps qu'app.js s'exécute. -->
+<!-- Pose le thème, la gamme de couleurs et la taille du texte choisis AVANT
+     le premier affichage, pour éviter un flash de mauvaises couleurs (ou un
+     texte qui change de taille) le temps qu'app.js s'exécute. -->
 <script>
 (function () {
   try {
@@ -22,6 +23,8 @@
       theme = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'sombre' : 'clair';
     }
     document.documentElement.dataset.mode = palette + '-' + theme;
+    var echelle = Number(r.echelle);
+    if (echelle >= 0.8 && echelle <= 1.5) document.documentElement.style.setProperty('--echelle', echelle);
   } catch (e) {
     document.documentElement.dataset.mode = 'bleu-sombre';
   }
@@ -43,6 +46,23 @@
     <button type="button" id="btn-accueil-reglages" class="bouton-reglages-accueil" aria-label="Réglages">⚙</button>
     <h1 style="text-align:center; margin-bottom:26px">Cap</h1>
 
+    <!-- Ce qui est en cours (routine commencée, minuteur qui tourne) :
+         rempli par app.js, vide s'il n'y a rien à reprendre. -->
+    <div id="accueil-en-cours"></div>
+
+    <!-- La tâche épinglée : une seule chose sous les yeux, avec seulement
+         sa prochaine petite étape. Masquée si aucune tâche n'est épinglée. -->
+    <div id="accueil-tache-du-jour" class="carte tache-du-jour masque">
+      <h2>Ma tâche du jour</h2>
+      <p class="nom" id="tdj-nom"></p>
+      <p class="tdj-etape" id="tdj-etape"></p>
+      <div class="bouton-rangee" id="tdj-actions">
+        <button type="button" id="btn-tdj-fait" class="bouton-doux">C'est fait ✓</button>
+        <button type="button" id="btn-tdj-ouvrir">Ouvrir</button>
+      </div>
+      <button type="button" id="btn-tdj-retirer" class="masque" style="margin-top:12px">Retirer de l'accueil</button>
+    </div>
+
     <button type="button" id="btn-accueil-routines" class="bouton-accueil">
       Mes routines
       <span class="sous">Suivre les étapes d'un moment de la journée</span>
@@ -57,6 +77,13 @@
       Minuteur
       <span class="sous">Un temps qui se voit, pas seulement des chiffres</span>
     </button>
+
+    <!-- Pont discret vers l'application sœur, pour les moments où tout
+         déborde. Nouvel onglet : Cap reste ouvert derrière. -->
+    <p class="lien-refuge">
+      <a class="lien-discret" href="https://ferrusdantioch.github.io/Refuge/"
+         target="_blank" rel="noopener noreferrer">Ça déborde ? Ouvrir Refuge</a>
+    </p>
   </section>
 
   <!-- ========================================================
@@ -68,9 +95,20 @@
       <h1>Mes routines</h1>
     </div>
 
-    <button type="button" id="btn-nouvelle-routine" class="bouton-doux" style="margin-bottom:18px">
+    <button type="button" id="btn-nouvelle-routine" class="bouton-doux" style="margin-bottom:12px">
       + Créer une routine
     </button>
+
+    <button type="button" id="btn-modeles" class="bouton-secondaire" style="margin-bottom:18px"
+            aria-expanded="false" aria-controls="zone-modeles">
+      Partir d'un modèle
+    </button>
+
+    <div id="zone-modeles" class="masque">
+      <p><small>Un modèle s'ouvre comme une nouvelle routine : tu peux tout
+         changer avant d'enregistrer.</small></p>
+      <div id="liste-modeles"></div>
+    </div>
 
     <div id="liste-routines"></div>
   </section>
@@ -88,14 +126,16 @@
     <input type="text" id="rf-nom" placeholder="Par exemple : Routine du matin">
 
     <h3>Étapes, dans l'ordre</h3>
-    <div id="rf-etapes"></div>
+    <p><small>Pour chaque étape, tu peux ajouter une image et une durée
+       prévue. Les deux sont facultatives.</small></p>
+    <div id="rf-etapes" data-duree="oui"></div>
 
     <button type="button" id="btn-rf-ajouter-etape" class="bouton-secondaire" style="margin-bottom:18px">
       + Ajouter une étape
     </button>
 
     <div class="bouton-rangee">
-      <button type="button" data-accueil>Annuler</button>
+      <button type="button" id="btn-rf-annuler">Annuler</button>
       <button type="button" id="btn-rf-enregistrer" class="bouton-doux">Enregistrer</button>
     </div>
   </section>
@@ -105,21 +145,40 @@
        ======================================================== -->
   <section id="vue-routine-lancer" class="vue" hidden>
     <div class="barre-haut">
-      <button type="button" class="bouton-retour" id="btn-rl-retour-haut" aria-label="Arrêter et revenir à mes routines">←</button>
+      <button type="button" class="bouton-retour" id="btn-rl-retour-haut"
+              aria-label="Retour à l'accueil. Ta progression est gardée.">←</button>
       <h1 id="titre-routine-lancer">Routine</h1>
     </div>
 
     <div class="scene-routine">
       <p class="compteur" id="rl-compteur">Étape 1 / 1</p>
+      <p class="etape-image picto masque" id="rl-etape-image" aria-hidden="true"></p>
       <p class="etape-texte" id="rl-etape-texte"></p>
+
+      <!-- Durée prévue de l'étape, si la personne en a choisi une. -->
+      <div id="rl-minuteur-etape" class="minuteur-etape masque">
+        <div class="barre-progres"><div id="rl-barre-etape" style="width:100%"></div></div>
+        <p id="rl-temps-etape"></p>
+      </div>
+
+      <p class="ensuite" id="rl-ensuite"></p>
     </div>
 
     <button type="button" id="btn-rl-valider" class="bouton-valider">C'est fait ✓</button>
 
-    <div class="bouton-rangee">
+    <div class="bouton-rangee" style="margin-bottom:14px">
       <button type="button" id="btn-rl-precedente" class="bouton-secondaire">← Étape précédente</button>
-      <button type="button" id="btn-rl-arreter" class="bouton-secondaire">Arrêter</button>
+      <button type="button" id="btn-rl-passer" class="bouton-secondaire">Passer cette étape</button>
     </div>
+
+    <details class="apercu" id="rl-apercu">
+      <summary>Voir toute la routine</summary>
+      <ol id="rl-liste"></ol>
+    </details>
+
+    <button type="button" id="btn-rl-arreter" class="bouton-secondaire">Arrêter la routine</button>
+    <p style="margin-top:12px"><small>Si tu quittes cet écran, ta progression
+       est gardée : tu pourras reprendre depuis l'accueil.</small></p>
   </section>
 
   <!-- ========================================================
@@ -129,6 +188,7 @@
     <div style="text-align:center; padding:60px 10px">
       <h1>Routine terminée</h1>
       <p style="color:var(--texte-doux)">Bien joué. Elle est prête à être relancée la prochaine fois.</p>
+      <p id="rl-fin-passees" class="masque"><small></small></p>
       <button type="button" data-accueil class="bouton-doux" style="margin-top:20px">Retour à l'accueil</button>
     </div>
   </section>
@@ -155,18 +215,19 @@
   </section>
 
   <!-- ========================================================
-       TÂCHES — création
+       TÂCHES — création / modification
        ======================================================== -->
   <section id="vue-tache-form" class="vue" hidden>
     <div class="barre-haut">
       <button type="button" class="bouton-retour" data-accueil aria-label="Retour à l'accueil">←</button>
-      <h1>Nouvelle tâche</h1>
+      <h1 id="titre-tache-form">Nouvelle tâche</h1>
     </div>
 
     <label for="tf-nom">Nom de la tâche</label>
     <input type="text" id="tf-nom" placeholder="Par exemple : Faire les papiers">
 
     <h3>Petites étapes</h3>
+    <p><small>Tu peux ajouter une image à chaque étape. C'est facultatif.</small></p>
     <div id="tf-etapes"></div>
 
     <button type="button" id="btn-tf-ajouter-etape" class="bouton-secondaire" style="margin-bottom:18px">
@@ -174,7 +235,7 @@
     </button>
 
     <div class="bouton-rangee">
-      <button type="button" data-accueil>Annuler</button>
+      <button type="button" id="btn-tf-annuler">Annuler</button>
       <button type="button" id="btn-tf-enregistrer" class="bouton-doux">Enregistrer</button>
     </div>
   </section>
@@ -191,14 +252,34 @@
     <p class="meta" id="td-progres"></p>
     <div class="barre-progres" style="margin-bottom:20px"><div id="td-barre" style="width:0%"></div></div>
 
-    <div id="td-etapes"></div>
+    <button type="button" id="btn-td-mode" class="bouton-secondaire" aria-pressed="false" style="margin-bottom:18px">
+      Voir une étape à la fois
+    </button>
 
-    <form id="td-ajout-form" class="ajout-etape-rapide">
-      <input type="text" id="td-nouvelle-etape" placeholder="Ajouter une étape">
-      <button type="submit">+</button>
-    </form>
+    <!-- Mode « une étape à la fois » : une seule étape non faite à l'écran. -->
+    <div id="td-une-etape" class="une-etape masque">
+      <p class="etape-image picto masque" id="td-ue-image" aria-hidden="true"></p>
+      <p class="etape-texte" id="td-ue-texte"></p>
+      <button type="button" id="btn-td-ue-fait" class="bouton-valider">C'est fait ✓</button>
+      <button type="button" id="btn-td-ue-autre" class="bouton-secondaire">Une autre étape</button>
+    </div>
 
-    <button type="button" id="btn-td-supprimer" class="bouton-secondaire" style="margin-top:24px">
+    <div id="td-tout">
+      <div id="td-etapes"></div>
+
+      <form id="td-ajout-form" class="ajout-etape-rapide">
+        <input type="text" id="td-nouvelle-etape" placeholder="Ajouter une étape" aria-label="Nouvelle étape">
+        <button type="submit" aria-label="Ajouter cette étape">+</button>
+      </form>
+    </div>
+
+    <button type="button" id="btn-td-epingler" aria-pressed="false" style="margin-top:24px">
+      Épingler sur l'accueil
+    </button>
+    <button type="button" id="btn-td-modifier" style="margin-top:12px">
+      Modifier la tâche
+    </button>
+    <button type="button" id="btn-td-supprimer" class="bouton-secondaire" style="margin-top:12px">
       Supprimer cette tâche
     </button>
   </section>
@@ -213,6 +294,7 @@
     </div>
 
     <div class="scene-minuteur">
+      <p class="nom-minuteur masque" id="min-nom-affiche"></p>
       <div class="anneau-minuteur" id="min-anneau">
         <svg viewBox="0 0 240 240">
           <circle class="fond" cx="120" cy="120" r="100"></circle>
@@ -220,7 +302,7 @@
         </svg>
         <div class="temps" id="min-temps">05:00</div>
       </div>
-      <p class="etat-minuteur" id="min-etat">Choisissez une durée</p>
+      <p class="etat-minuteur" id="min-etat">Choisis une durée</p>
     </div>
 
     <div id="min-reglage-duree">
@@ -231,10 +313,13 @@
         <button type="button" data-min="25">25 min</button>
       </div>
       <div class="duree-libre">
-        <input type="number" id="min-libre" min="1" max="180" placeholder="Autre">
+        <input type="number" id="min-libre" min="1" max="180" placeholder="Autre" aria-label="Autre durée, en minutes">
         <span>minutes</span>
         <button type="button" id="btn-min-libre-valider" style="width:auto; min-width:100px">Valider</button>
       </div>
+
+      <label for="min-nom">À quoi sert ce minuteur ? (facultatif)</label>
+      <input type="text" id="min-nom" maxlength="60" placeholder="Par exemple : Pause, Avant de partir">
     </div>
 
     <div class="bouton-rangee" id="min-controles-avant">
@@ -250,10 +335,19 @@
       <button type="button" id="btn-min-recommencer" class="bouton-doux">Choisir une nouvelle durée</button>
     </div>
 
-    <label class="interrupteur" for="min-vibration" style="margin-top:10px">
+    <label class="interrupteur" for="min-preavis" style="margin-top:10px">
+      <span>Prévenir avant la fin</span>
+      <input type="checkbox" id="min-preavis" checked>
+    </label>
+    <p><small>Pendant les dernières minutes, l'anneau change doucement de
+       couleur et le temps restant s'écrit en toutes lettres. Sans son ni
+       vibration.</small></p>
+
+    <label class="interrupteur" for="min-vibration">
       <span>Vibration courte à la fin</span>
       <input type="checkbox" id="min-vibration" checked>
     </label>
+    <p><small>Aussi à la fin du temps prévu pour une étape de routine.</small></p>
 
     <!-- Masqué par app.js si le navigateur ne sait pas garder l'écran allumé. -->
     <div id="min-option-ecran">
@@ -268,7 +362,7 @@
   </section>
 
   <!-- ========================================================
-       RÉGLAGES — thème et couleurs
+       RÉGLAGES — thème, couleurs, taille du texte, sauvegarde
        ======================================================== -->
   <section id="vue-reglages" class="vue" hidden>
     <div class="barre-haut">
@@ -282,7 +376,7 @@
       <button type="button" data-theme-val="clair">Clair</button>
       <button type="button" data-theme-val="auto">Automatique</button>
     </div>
-    <p><small>« Automatique » suit le réglage de votre téléphone.</small></p>
+    <p><small>« Automatique » suit le réglage de ton téléphone.</small></p>
 
     <h3>Couleurs</h3>
     <div class="palette-grille" id="choix-palette" role="group" aria-label="Gamme de couleurs">
@@ -318,8 +412,16 @@
     <p><small>Des teintes volontairement douces et désaturées : jamais de
        blanc pur, de noir pur, ni de couleur vive.</small></p>
 
+    <h3>Taille du texte</h3>
+    <div class="choix" id="choix-taille" role="group" aria-label="Taille du texte">
+      <button type="button" data-echelle="0.9">Petit</button>
+      <button type="button" data-echelle="1">Normal</button>
+      <button type="button" data-echelle="1.15">Grand</button>
+      <button type="button" data-echelle="1.35">Très grand</button>
+    </div>
+
     <h3 style="margin-top:24px">Sauvegarde de mes données</h3>
-    <p><small>Vos routines, vos tâches et vos réglages sont gardés dans le
+    <p><small>Tes routines, tes tâches et tes réglages sont gardés dans le
        navigateur de ce téléphone. Si ses données sont effacées (nettoyage du
        cache, réinstallation, changement de téléphone), tout disparaît. Un
        fichier de sauvegarde, rangé dans le téléphone, permet de tout
