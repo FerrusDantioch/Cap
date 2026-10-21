@@ -1828,4 +1828,22 @@ document.addEventListener('DOMContentLoaded', () => {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     });
   }
+
+  // ----- Stockage persistant -----
+  // Par défaut, le navigateur peut effacer de lui-même la copie hors-ligne
+  // (et les routines, les tâches) s'il manque de place ou si l'app est peu
+  // utilisée. persist() lui demande de les garder.
+  // Certains navigateurs (Firefox) affichent alors une fenêtre
+  // d'autorisation : pour ne jamais en faire surgir une au démarrage, on ne
+  // demande que si le navigateur a déjà répondu « accordé » (Chrome, pour
+  // une app installée, sans rien afficher). Sinon, on renonce en silence.
+  if (navigator.storage && navigator.storage.persist && navigator.permissions) {
+    navigator.storage.persisted()
+      .then((dejaPersistant) => {
+        if (dejaPersistant) return;
+        return navigator.permissions.query({ name: 'persistent-storage' })
+          .then((etat) => { if (etat.state === 'granted') return navigator.storage.persist(); });
+      })
+      .catch(() => {});
+  }
 });
