@@ -358,6 +358,43 @@ input[type="text"], input[type="number"] {
   margin-bottom: 16px;
 }
 
+/* Cases à cocher redessinées : celles du navigateur sont d'un blanc pur en
+   thème clair, ce qui va contre la règle « aucun blanc pur ».
+   - vide : un carré au fond doux, bordé du gris du texte secondaire (bien
+     visible : contraste d'au moins 4,5 pour 1 avec le fond) ;
+   - cochée : remplie de la couleur de la gamme, avec une coche de la
+     couleur du fond (foncée en sombre, claire en clair).
+   Le changement se fait par un fondu lent, comme les boutons. La taille
+   est donnée plus bas, selon l'endroit (tâches, interrupteurs). */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  margin: 0;
+  border: 2px solid var(--texte-doux);
+  border-radius: 8px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: background var(--duree) linear, border-color var(--duree) linear;
+}
+/* La coche : un petit « L » tourné, dessiné avec deux bordures. */
+input[type="checkbox"]::before {
+  content: '';
+  width: 11px;
+  height: 6px;
+  border-left: 3px solid var(--bg);
+  border-bottom: 3px solid var(--bg);
+  transform: translateY(-2px) rotate(-45deg);
+  opacity: 0;
+  transition: opacity var(--duree) linear;
+}
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+input[type="checkbox"]:checked::before { opacity: 1; }
+
 /* ---------- Listes d'étapes (formulaire routine / tâche) ---------- */
 
 /* Chaque étape est une petite carte sur deux rangées :
@@ -680,8 +717,6 @@ details.apercu li.faite { text-decoration: line-through; }
   width: 30px;
   height: 30px;
   flex-shrink: 0;
-  accent-color: var(--accent);
-  margin: 0;
 }
 .etape-cochable span { flex: 1; font-size: 1rem; }
 /* Une fois cochée, l'étape est barrée — mais pas l'étiquette « Pour
@@ -823,7 +858,7 @@ details.apercu li.faite { text-decoration: line-through; }
   color: var(--texte);
   font-size: 0.95rem;
 }
-.interrupteur input { width: 28px; height: 28px; flex-shrink: 0; accent-color: var(--accent); margin: 0; }
+.interrupteur input { width: 28px; height: 28px; flex-shrink: 0; }
 
 /* L'interrupteur « Journée difficile » de l'accueil, dans une carte : allumé,
    la carte prend la couleur douce de la gamme, pour qu'on voie d'un coup

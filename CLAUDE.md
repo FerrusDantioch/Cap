@@ -111,7 +111,9 @@ l'accueil.
   saturation et de contraste que les existantes — jamais un accent saturé
   ou un fond franc. Le texte secondaire `--texte-doux` garde un contraste
   ≥ 4,5:1 sur `--bg`, `--surface`, `--surface-2` et `--accent-fond`
-  (norme WCAG AA), en clair comme en sombre.
+  (norme WCAG AA), en clair comme en sombre. Les cases à cocher sont
+  redessinées en CSS (`appearance: none`) : celles du navigateur sont d'un
+  blanc pur en thème clair. Ne pas revenir aux cases natives.
 - **Animations lentes et régulières**, jamais brusques ;
   `prefers-reduced-motion` pleinement respecté.
 - **Zones tactiles ≥ 60 px.**
@@ -156,7 +158,7 @@ Après toute modification d'un fichier **mis en cache** (`index.html`,
 haut de `sw.js` :
 
 ```js
-const CACHE = 'cap-v13';   // → v14
+const CACHE = 'cap-v14';   // → v15
 ```
 
 Sans ce changement, le navigateur ne retélécharge rien. En cas d'**ajout de
