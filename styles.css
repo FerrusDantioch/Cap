@@ -31,7 +31,10 @@
    Choisi par la personne dans Réglages ; appliqué par app.js via
    l'attribut data-mode="<gamme>-<sombre|clair>" sur <html>. Chaque paire
    garde la même construction que Refuge : fonds jamais blancs ni noirs
-   purs, textes jamais blanc pur, un seul accent désaturé. */
+   purs, textes jamais blanc pur, un seul accent désaturé.
+   Le texte secondaire (--texte-doux) garde un contraste d'au moins 4,5
+   pour 1 sur tous les fonds (bg, surface, surface-2, accent-fond) : c'est
+   le minimum recommandé pour un texte lisible (norme WCAG, niveau AA). */
 
 /* En sombre, les accents sont des pastels (clairs mais peu saturés) : sur
    fond foncé, une couleur moyenne se confond avec le gris, alors qu'un
@@ -47,7 +50,7 @@ html[data-mode="bleu-sombre"] {
 }
 html[data-mode="bleu-clair"] {
   --bg: #eef0f2; --surface: #f7f8f9; --surface-2: #e9ebee; --bord: #d7dbe0;
-  --texte: #3b4046; --texte-doux: #6e757d;
+  --texte: #3b4046; --texte-doux: #626870;
   --accent: #4f7086; --accent-fond: #e3eaee;
   --fini: #8c6a46; --fini-fond: #f0e6d8;
   color-scheme: light;
@@ -62,7 +65,7 @@ html[data-mode="sauge-sombre"] {
 }
 html[data-mode="sauge-clair"] {
   --bg: #eef1ec; --surface: #f6f8f4; --surface-2: #e7ebe3; --bord: #d3dbcd;
-  --texte: #384038; --texte-doux: #69756a;
+  --texte: #384038; --texte-doux: #5f6a60;
   --accent: #5d8579; --accent-fond: #e2ebe6;
   --fini: #8c6a46; --fini-fond: #f0e6d8;
   color-scheme: light;
@@ -77,7 +80,7 @@ html[data-mode="lavande-sombre"] {
 }
 html[data-mode="lavande-clair"] {
   --bg: #f1eef5; --surface: #f8f6fa; --surface-2: #eae6f0; --bord: #d8d2e2;
-  --texte: #423d4c; --texte-doux: #756e82;
+  --texte: #423d4c; --texte-doux: #696376;
   --accent: #7871a8; --accent-fond: #e8e4f0;
   --fini: #8c6a46; --fini-fond: #f0e6d8;
   color-scheme: light;
@@ -92,7 +95,7 @@ html[data-mode="sable-sombre"] {
 }
 html[data-mode="sable-clair"] {
   --bg: #f3ece2; --surface: #faf6f0; --surface-2: #ede4d6; --bord: #ddd0bd;
-  --texte: #453a30; --texte-doux: #7d7062;
+  --texte: #453a30; --texte-doux: #706356;
   --accent: #8c6a46; --accent-fond: #f0e6d8;
   --fini: #7871a8; --fini-fond: #e8e4f0;
   color-scheme: light;
@@ -110,7 +113,7 @@ html[data-mode="peche-sombre"] {
 }
 html[data-mode="peche-clair"] {
   --bg: #f7eee8; --surface: #fcf7f3; --surface-2: #f1e5dc; --bord: #e3d1c4;
-  --texte: #4a3a32; --texte-doux: #806c61;
+  --texte: #4a3a32; --texte-doux: #746157;
   --accent: #a47260; --accent-fond: #f5e2d7;
   --fini: #5d8579; --fini-fond: #e2ebe6;
   color-scheme: light;
@@ -125,7 +128,7 @@ html[data-mode="miel-sombre"] {
 }
 html[data-mode="miel-clair"] {
   --bg: #f6f1e4; --surface: #fbf8ef; --surface-2: #efe8d6; --bord: #ded3b9;
-  --texte: #463f2e; --texte-doux: #7d735c;
+  --texte: #463f2e; --texte-doux: #6f6651;
   --accent: #8a7748; --accent-fond: #f1e9d2;
   --fini: #4f7086; --fini-fond: #e3eaee;
   color-scheme: light;
@@ -140,7 +143,7 @@ html[data-mode="rose-sombre"] {
 }
 html[data-mode="rose-clair"] {
   --bg: #f6eef0; --surface: #fbf6f7; --surface-2: #efe3e6; --bord: #e0cdd2;
-  --texte: #4a3940; --texte-doux: #806b73;
+  --texte: #4a3940; --texte-doux: #746068;
   --accent: #a4677a; --accent-fond: #f3e2e7;
   --fini: #5d8579; --fini-fond: #e2ebe6;
   color-scheme: light;
@@ -224,14 +227,24 @@ main {
 
 #vue-accueil.active { display: flex; flex-direction: column; justify-content: center; min-height: 100%; position: relative; }
 
+/* Le titre « Cap » a la même hauteur que le bouton Réglages posé à côté
+   (60 px) : le bouton ne déborde jamais sur la carte qui suit. */
+.titre-accueil {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
 /* Petit bouton Réglages, discret, dans le coin de l'accueil — pas un
    4ᵉ gros bouton, pour ne pas surcharger l'écran principal. */
 .bouton-reglages-accueil {
   position: absolute;
   top: 0;
   right: 0;
-  width: 52px;
-  min-height: 52px;
+  width: 60px;
+  min-height: 60px;
   padding: 0;
   border-radius: 14px;
   font-size: 1.4rem;
@@ -256,7 +269,7 @@ main {
 .bouton-retour {
   width: auto;
   min-width: 60px;
-  min-height: 52px;
+  min-height: 60px;
   padding: 10px 16px;
   font-size: 1.3rem;
   flex-shrink: 0;
@@ -313,10 +326,12 @@ button:active { background: var(--bord); }
   border-color: var(--bord);
   color: var(--texte-doux);
   font-size: 0.92rem;
-  min-height: 52px;
+  min-height: 60px;
 }
 
-.bouton-rangee { display: flex; gap: 12px; }
+/* flex-wrap : si les boutons ne tiennent pas côte à côte (petit écran,
+   grand texte), le dernier passe à la ligne au lieu de déborder de l'écran. */
+.bouton-rangee { display: flex; flex-wrap: wrap; gap: 12px; }
 .bouton-rangee > * { flex: 1; }
 
 /* Un bouton armé attend un second appui avant une action qu'on ne peut pas
@@ -339,9 +354,46 @@ input[type="text"], input[type="number"] {
   border: 1px solid var(--bord);
   border-radius: 14px;
   padding: 14px;
-  min-height: 56px;
+  min-height: 60px;
   margin-bottom: 16px;
 }
+
+/* Cases à cocher redessinées : celles du navigateur sont d'un blanc pur en
+   thème clair, ce qui va contre la règle « aucun blanc pur ».
+   - vide : un carré au fond doux, bordé du gris du texte secondaire (bien
+     visible : contraste d'au moins 4,5 pour 1 avec le fond) ;
+   - cochée : remplie de la couleur de la gamme, avec une coche de la
+     couleur du fond (foncée en sombre, claire en clair).
+   Le changement se fait par un fondu lent, comme les boutons. La taille
+   est donnée plus bas, selon l'endroit (tâches, interrupteurs). */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  margin: 0;
+  border: 2px solid var(--texte-doux);
+  border-radius: 8px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: background var(--duree) linear, border-color var(--duree) linear;
+}
+/* La coche : un petit « L » tourné, dessiné avec deux bordures. */
+input[type="checkbox"]::before {
+  content: '';
+  width: 11px;
+  height: 6px;
+  border-left: 3px solid var(--bg);
+  border-bottom: 3px solid var(--bg);
+  transform: translateY(-2px) rotate(-45deg);
+  opacity: 0;
+  transition: opacity var(--duree) linear;
+}
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+input[type="checkbox"]:checked::before { opacity: 1; }
 
 /* ---------- Listes d'étapes (formulaire routine / tâche) ---------- */
 
@@ -369,6 +421,22 @@ input[type="text"], input[type="number"] {
 }
 .ligne-etape .bouton-picto { font-size: 1.7rem; line-height: 1; }
 .ligne-etape .bouton-picto.vide { font-size: 0.8rem; color: var(--texte-doux); }
+
+/* « ☆ Essentielle » (routines) : une rangée à part, sur toute la largeur.
+   Enfoncé, il prend la couleur douce de la gamme et l'étoile se remplit. */
+.ligne-etape .bouton-essentielle {
+  width: 100%;
+  margin-top: 8px;
+  font-size: 0.95rem;
+  background: transparent;
+  color: var(--texte-doux);
+}
+.ligne-etape .bouton-essentielle[aria-pressed="true"] {
+  background: var(--accent-fond);
+  border-color: var(--accent);
+  color: var(--texte);
+  font-weight: 600;
+}
 
 select {
   font: inherit;
@@ -417,7 +485,7 @@ span.picto { display: inline-block; margin-right: 0.45em; }
 }
 .fiche .nom { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
 .fiche .meta { color: var(--texte-doux); font-size: 0.9rem; margin-bottom: 14px; }
-.fiche .bouton-rangee button { min-height: 52px; font-size: 0.92rem; }
+.fiche .bouton-rangee button { min-height: 60px; font-size: 0.92rem; }
 
 .barre-progres {
   height: 10px;
@@ -470,7 +538,7 @@ details.apercu li.faite { text-decoration: line-through; }
 /* Onglets simples "En cours" / "Terminées" */
 .sous-onglets { display: flex; gap: 10px; margin-bottom: 18px; }
 .sous-onglets button {
-  min-height: 52px;
+  min-height: 60px;
   font-size: 0.95rem;
 }
 .sous-onglets button[aria-pressed="true"] {
@@ -523,9 +591,103 @@ details.apercu li.faite { text-decoration: line-through; }
 .minuteur-etape .barre-progres > div { transition: width 1s linear, background var(--duree) ease; }
 .minuteur-etape.termine .barre-progres > div { background: var(--fini); }
 
-/* Tâche en mode « une étape à la fois ». */
+/* Journée difficile : la petite phrase qui dit pourquoi la routine est
+   plus courte. */
+.note-difficile { margin: -6px 0 14px; }
+
+/* Mode « Une seule chose » (routines et tâches) : la classe « une-chose »
+   posée sur l'écran cache tout ce qui est marqué « hors-une-chose », et
+   l'étape en cours s'affiche plus grand. Rien ne bouge brusquement : les
+   éléments disparaissent simplement. */
+.une-chose .hors-une-chose { display: none !important; }
+.une-chose .etape-texte {
+  font-size: 2rem;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+.une-chose .etape-image { font-size: 4.4rem; }
+.une-chose .scene-routine { padding-top: 36px; }
+
+/* Le bouton « Une seule chose » / « Voir tout » : toujours au même endroit,
+   en haut de l'écran. */
+.bouton-mode { margin-bottom: 18px; }
+
+/* Transitions douces : pendant la pause, l'écran ne garde que sa barre du
+   haut (la flèche ← reste disponible) et la pause elle-même. */
+.en-pause > :not(.barre-haut):not(.pause-douce) { display: none !important; }
+
+/* La pause est un seul grand bouton calme : un toucher n'importe où la
+   termine. Elle apparaît par un fondu lent, et sa barre se vide d'une
+   seule glissade régulière (réglée par app.js sur la durée de la pause). */
+.pause-douce {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-height: 60vh;
+  padding: 30px 20px;
+  background: var(--surface);
+  border-radius: 24px;
+  animation: apparition-douce 600ms ease;
+}
+.pause-message { display: block; font-size: 1.35rem; font-weight: 600; line-height: 1.4; }
+.pause-ensuite { display: block; color: var(--texte-doux); overflow-wrap: anywhere; }
+.pause-jauge {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--bord);
+  overflow: hidden;
+}
+.pause-barre { display: block; height: 100%; width: 100%; background: var(--accent); }
+.pause-aide { display: block; font-size: 0.85rem; color: var(--texte-doux); }
+
+/* « ✓ Fait » en tête de la pause, quand l'étape d'avant vient d'être faite. */
+.pause-fait { display: block; font-weight: 600; color: var(--texte-doux); }
+
+/* Retour positif sobre : un petit « ✓ Fait » en bas de l'écran, qui
+   apparaît et s'efface par un fondu lent (opacité seulement : rien ne
+   bouge, rien ne clignote). Il ne gêne aucun toucher (pointer-events). */
+.retour-fait {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: var(--accent-fond);
+  border: 1px solid var(--accent);
+  /* Un halo de la couleur du fond la détache de ce qu'elle recouvre. */
+  box-shadow: 0 0 0 6px var(--bg);
+  color: var(--texte);
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms ease;
+  z-index: 10;
+}
+.retour-fait.visible { opacity: 1; }
+
+@keyframes apparition-douce {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Mouvements réduits : la barre ne pourrait plus glisser (elle sauterait
+   d'un coup à vide) ; on la retire, le texte dit combien de temps dure la
+   pause. */
+@media (prefers-reduced-motion: reduce) {
+  .pause-jauge { display: none; }
+}
+
+/* Tâche en mode « Une seule chose ». */
 .une-etape { text-align: center; padding: 10px 0 6px; }
 .une-etape .etape-texte { margin-bottom: 22px; }
+.une-chose .une-etape { padding-top: 30px; }
 .bouton-valider {
   min-height: 90px;
   font-size: 1.2rem;
@@ -546,20 +708,57 @@ details.apercu li.faite { text-decoration: line-through; }
   padding: 10px 0;
   border-bottom: 1px solid var(--bord);
   cursor: pointer;
+  /* Une étape à faire en couleur de texte normale ; une fois cochée, elle
+     passe en gris et barrée (règle plus bas) : la différence se voit. */
+  color: var(--texte);
 }
 .etape-cochable:last-of-type { border-bottom: none; }
 .etape-cochable input {
   width: 30px;
   height: 30px;
   flex-shrink: 0;
-  accent-color: var(--accent);
-  margin: 0;
 }
 .etape-cochable span { flex: 1; font-size: 1rem; }
-.etape-cochable:has(input:checked) span {
+/* Une fois cochée, l'étape est barrée — mais pas l'étiquette « Pour
+   démarrer », rangée à côté du texte dans la « colonne ». */
+.etape-cochable:has(input:checked) span:not(.colonne) {
   color: var(--texte-doux);
   text-decoration: line-through;
 }
+
+/* Petite action de démarrage (tâches) : mise en valeur doucement, avec le
+   fond de la couleur de la gamme et l'étiquette « Pour démarrer ». Placé
+   après les règles ci-dessus pour garder sa bordure complète. */
+.etape-cochable.etape-mini {
+  background: var(--accent-fond);
+  border: 1px solid var(--bord);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--bord));
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.etape-cochable .colonne { flex: 1; }
+.etiquette-mini {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texte-doux);
+}
+.une-etape .etiquette-mini { margin-bottom: 6px; }
+
+/* Carte « Temps passé » d'une tâche (chrono, temps prévu, écart). */
+.temps-tache h2 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--texte-doux);
+  margin-bottom: 6px;
+}
+.temps-valeur { font-size: 1.1rem; font-weight: 600; }
+
+/* Historique : une carte par jour, les routines terminées en dessous. */
+.jour-historique { font-size: 1rem; margin-bottom: 6px; }
+.liste-historique { margin: 0; padding-left: 20px; }
+.liste-historique li { padding: 4px 0; overflow-wrap: anywhere; }
 
 .ajout-etape-rapide {
   display: flex;
@@ -655,10 +854,33 @@ details.apercu li.faite { text-decoration: line-through; }
   justify-content: space-between;
   gap: 14px;
   padding: 14px 0;
+  min-height: 60px;
   color: var(--texte);
   font-size: 0.95rem;
 }
-.interrupteur input { width: 28px; height: 28px; flex-shrink: 0; accent-color: var(--accent); margin: 0; }
+.interrupteur input { width: 28px; height: 28px; flex-shrink: 0; }
+
+/* L'interrupteur « Journée difficile » de l'accueil, dans une carte : allumé,
+   la carte prend la couleur douce de la gamme, pour qu'on voie d'un coup
+   d'œil que les routines sont allégées. */
+.carte-interrupteur {
+  background: var(--surface);
+  border: 1px solid var(--bord);
+  border-radius: 16px;
+  padding: 10px 18px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: background var(--duree) linear, border-color var(--duree) linear;
+}
+.carte-interrupteur:has(input:checked) {
+  background: var(--accent-fond);
+  border-color: var(--accent);
+}
+.carte-interrupteur .sous {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--texte-doux);
+}
 
 /* ---------- Réglages : thème et gammes de couleurs ---------- */
 

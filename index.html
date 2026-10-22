@@ -44,7 +44,7 @@
        ======================================================== -->
   <section id="vue-accueil" class="vue active">
     <button type="button" id="btn-accueil-reglages" class="bouton-reglages-accueil" aria-label="Réglages">⚙</button>
-    <h1 style="text-align:center; margin-bottom:26px">Cap</h1>
+    <h1 class="titre-accueil">Cap</h1>
 
     <!-- Ce qui est en cours (routine commencée, minuteur qui tourne) :
          rempli par app.js, vide s'il n'y a rien à reprendre. -->
@@ -77,6 +77,18 @@
       Minuteur
       <span class="sous">Un temps qui se voit, pas seulement des chiffres</span>
     </button>
+
+    <!-- Journée difficile : un seul toucher pour alléger toutes les
+         routines (seules leurs étapes « essentielles » s'affichent). Les
+         routines elles-mêmes ne sont jamais modifiées. Le même interrupteur
+         existe dans Réglages : les deux restent toujours d'accord. -->
+    <label class="interrupteur carte-interrupteur" for="accueil-journee-difficile">
+      <span>
+        Journée difficile
+        <span class="sous">Les routines ne montrent que l'essentiel</span>
+      </span>
+      <input type="checkbox" role="switch" id="accueil-journee-difficile" data-reglage="journeeDifficile">
+    </label>
 
     <!-- Pont discret vers l'application sœur, pour les moments où tout
          déborde. Nouvel onglet : Cap reste ouvert derrière. -->
@@ -111,6 +123,34 @@
     </div>
 
     <div id="liste-routines"></div>
+
+    <button type="button" id="btn-historique" class="bouton-secondaire" style="margin-top:8px">
+      Historique des routines terminées
+    </button>
+  </section>
+
+  <!-- ========================================================
+       ROUTINES — historique
+       Seulement la date et le nom des routines terminées : aucun total,
+       aucun score, aucune série.
+       ======================================================== -->
+  <section id="vue-historique" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" data-accueil aria-label="Retour à l'accueil">←</button>
+      <h1>Historique</h1>
+    </div>
+
+    <p><small>Les routines que tu as terminées, de la plus récente à la
+       plus ancienne.</small></p>
+    <p id="historique-desactive" class="masque"><small>L'historique est en
+       pause : les routines terminées ne sont plus notées. Tu peux le
+       rallumer dans Réglages.</small></p>
+
+    <div id="liste-historique"></div>
+
+    <button type="button" id="btn-historique-vider" class="bouton-secondaire" style="margin-top:8px">
+      Vider l'historique
+    </button>
   </section>
 
   <!-- ========================================================
@@ -128,7 +168,13 @@
     <h3>Étapes, dans l'ordre</h3>
     <p><small>Pour chaque étape, tu peux ajouter une image et une durée
        prévue. Les deux sont facultatives.</small></p>
-    <div id="rf-etapes" data-duree="oui"></div>
+    <p><small>Marque aussi comme «&nbsp;essentielles&nbsp;» les quelques étapes à
+       garder les jours difficiles : quand l'interrupteur
+       «&nbsp;Journée difficile&nbsp;» de l'accueil est allumé, la routine ne montre qu'elles.</small></p>
+    <div id="rf-etapes" data-duree="oui" data-essentielle="oui"></div>
+
+    <!-- Combien d'étapes sont essentielles : un repère, jamais un blocage. -->
+    <p id="rf-essentielles" aria-live="polite"><small></small></p>
 
     <button type="button" id="btn-rf-ajouter-etape" class="bouton-secondaire" style="margin-bottom:18px">
       + Ajouter une étape
@@ -150,8 +196,15 @@
       <h1 id="titre-routine-lancer">Routine</h1>
     </div>
 
+    <!-- Mode « Une seule chose » : seule l'étape en cours reste à l'écran,
+         en grand. Ce bouton ne bouge jamais de place ; son texte dit ce
+         qu'il fera (« Une seule chose » ou « Voir tout »). Les éléments
+         marqués « hors-une-chose » sont cachés dans ce mode. -->
+    <button type="button" id="btn-rl-mode" class="bouton-secondaire bouton-mode">Une seule chose</button>
+
     <div class="scene-routine">
-      <p class="compteur" id="rl-compteur">Étape 1 / 1</p>
+      <p class="compteur hors-une-chose" id="rl-compteur">Étape 1 / 1</p>
+      <p class="note-difficile hors-une-chose masque" id="rl-note-difficile"><small></small></p>
       <p class="etape-image picto masque" id="rl-etape-image" aria-hidden="true"></p>
       <p class="etape-texte" id="rl-etape-texte"></p>
 
@@ -161,23 +214,23 @@
         <p id="rl-temps-etape"></p>
       </div>
 
-      <p class="ensuite" id="rl-ensuite"></p>
+      <p class="ensuite hors-une-chose" id="rl-ensuite"></p>
     </div>
 
     <button type="button" id="btn-rl-valider" class="bouton-valider">C'est fait ✓</button>
 
-    <div class="bouton-rangee" style="margin-bottom:14px">
+    <div class="bouton-rangee hors-une-chose" style="margin-bottom:14px">
       <button type="button" id="btn-rl-precedente" class="bouton-secondaire">← Étape précédente</button>
       <button type="button" id="btn-rl-passer" class="bouton-secondaire">Passer cette étape</button>
     </div>
 
-    <details class="apercu" id="rl-apercu">
-      <summary>Voir toute la routine</summary>
+    <details class="apercu hors-une-chose" id="rl-apercu">
+      <summary id="rl-apercu-titre">Voir toute la routine</summary>
       <ol id="rl-liste"></ol>
     </details>
 
-    <button type="button" id="btn-rl-arreter" class="bouton-secondaire">Arrêter la routine</button>
-    <p style="margin-top:12px"><small>Si tu quittes cet écran, ta progression
+    <button type="button" id="btn-rl-arreter" class="bouton-secondaire hors-une-chose">Arrêter la routine</button>
+    <p class="hors-une-chose" style="margin-top:12px"><small>Si tu quittes cet écran, ta progression
        est gardée : tu pourras reprendre depuis l'accueil.</small></p>
   </section>
 
@@ -188,6 +241,8 @@
     <div style="text-align:center; padding:60px 10px">
       <h1>Routine terminée</h1>
       <p style="color:var(--texte-doux)">Bien joué. Elle est prête à être relancée la prochaine fois.</p>
+      <p id="rl-fin-difficile" class="masque"><small>Version journée difficile :
+         seulement les étapes essentielles.</small></p>
       <p id="rl-fin-passees" class="masque"><small></small></p>
       <button type="button" data-accueil class="bouton-doux" style="margin-top:20px">Retour à l'accueil</button>
     </div>
@@ -226,6 +281,15 @@
     <label for="tf-nom">Nom de la tâche</label>
     <input type="text" id="tf-nom" placeholder="Par exemple : Faire les papiers">
 
+    <!-- Mini-démarrage : un geste minuscule pour se lancer. Rangé comme la
+         toute première étape de la tâche (avec « mini: true »), il
+         s'affiche toujours en premier, mis en valeur doucement. -->
+    <label for="tf-mini">Première toute petite action (facultatif)</label>
+    <input type="text" id="tf-mini" placeholder="Par exemple : Sortir le carnet"
+           aria-describedby="tf-mini-aide">
+    <p id="tf-mini-aide"><small>Un geste minuscule, presque trop facile,
+       juste pour démarrer. Il s'affichera en premier.</small></p>
+
     <h3>Petites étapes</h3>
     <p><small>Tu peux ajouter une image à chaque étape. C'est facultatif.</small></p>
     <div id="tf-etapes"></div>
@@ -233,6 +297,18 @@
     <button type="button" id="btn-tf-ajouter-etape" class="bouton-secondaire" style="margin-bottom:18px">
       + Ajouter une étape
     </button>
+
+    <!-- Estimation : le temps que la personne pense y passer. Le chrono de
+         la tâche mesure ensuite le temps réel, et les deux sont montrés
+         côte à côte, sans aucun jugement. -->
+    <label for="tf-prevu">Temps prévu pour toute la tâche (facultatif)</label>
+    <div class="duree-libre">
+      <input type="number" id="tf-prevu" min="1" max="600" inputmode="numeric"
+             aria-describedby="tf-prevu-aide">
+      <span>minutes</span>
+    </div>
+    <p id="tf-prevu-aide"><small>Dans la tâche, un chrono peut mesurer le
+       temps vraiment passé. À la fin, tu verras les deux côte à côte.</small></p>
 
     <div class="bouton-rangee">
       <button type="button" id="btn-tf-annuler">Annuler</button>
@@ -249,19 +325,22 @@
       <h1 id="titre-tache-detail">Tâche</h1>
     </div>
 
-    <p class="meta" id="td-progres"></p>
-    <div class="barre-progres" style="margin-bottom:20px"><div id="td-barre" style="width:0%"></div></div>
+    <p class="meta hors-une-chose" id="td-progres"></p>
+    <div class="barre-progres hors-une-chose" style="margin-bottom:20px"><div id="td-barre" style="width:0%"></div></div>
 
-    <button type="button" id="btn-td-mode" class="bouton-secondaire" aria-pressed="false" style="margin-bottom:18px">
-      Voir une étape à la fois
+    <!-- Même bouton que pour les routines : « Une seule chose » ou « Voir tout ». -->
+    <button type="button" id="btn-td-mode" class="bouton-secondaire bouton-mode">
+      Une seule chose
     </button>
 
-    <!-- Mode « une étape à la fois » : une seule étape non faite à l'écran. -->
+    <!-- Mode « Une seule chose » : une seule étape non faite à l'écran, en
+         grand, sans la liste, la progression ni les autres boutons. -->
     <div id="td-une-etape" class="une-etape masque">
+      <p class="etiquette-mini masque" id="td-ue-mini">Pour démarrer</p>
       <p class="etape-image picto masque" id="td-ue-image" aria-hidden="true"></p>
       <p class="etape-texte" id="td-ue-texte"></p>
-      <button type="button" id="btn-td-ue-fait" class="bouton-valider">C'est fait ✓</button>
-      <button type="button" id="btn-td-ue-autre" class="bouton-secondaire">Une autre étape</button>
+      <button type="button" id="btn-td-ue-fait" class="bouton-valider">Étape suivante ✓</button>
+      <button type="button" id="btn-td-ue-autre" class="bouton-secondaire">Montrer une autre étape</button>
     </div>
 
     <div id="td-tout">
@@ -273,13 +352,29 @@
       </form>
     </div>
 
-    <button type="button" id="btn-td-epingler" aria-pressed="false" style="margin-top:24px">
+    <!-- Temps passé : un chrono qui compte vers le haut, à la minute près.
+         Il se base sur l'heure de départ : il reste juste même si le
+         téléphone se verrouille ou si Cap est fermée. Il s'arrête tout seul
+         quand la dernière étape est cochée. -->
+    <div id="td-temps" class="carte temps-tache hors-une-chose" style="margin-top:24px">
+      <h2>Temps passé</h2>
+      <p id="td-temps-texte" class="temps-valeur"></p>
+      <p id="td-temps-ecart" class="masque"></p>
+      <p id="td-temps-note" class="masque"><small>Une simple information, pour
+         t'aider à prévoir la prochaine fois.</small></p>
+      <div class="bouton-rangee">
+        <button type="button" id="btn-td-chrono" class="bouton-doux">Commencer</button>
+        <button type="button" id="btn-td-chrono-zero" class="bouton-secondaire">Remettre à zéro</button>
+      </div>
+    </div>
+
+    <button type="button" id="btn-td-epingler" class="hors-une-chose" aria-pressed="false">
       Épingler sur l'accueil
     </button>
-    <button type="button" id="btn-td-modifier" style="margin-top:12px">
+    <button type="button" id="btn-td-modifier" class="hors-une-chose" style="margin-top:12px">
       Modifier la tâche
     </button>
-    <button type="button" id="btn-td-supprimer" class="bouton-secondaire" style="margin-top:12px">
+    <button type="button" id="btn-td-supprimer" class="bouton-secondaire hors-une-chose" style="margin-top:12px">
       Supprimer cette tâche
     </button>
   </section>
@@ -362,7 +457,8 @@
   </section>
 
   <!-- ========================================================
-       RÉGLAGES — thème, couleurs, taille du texte, sauvegarde
+       RÉGLAGES — thème, couleurs, taille du texte, routines et tâches,
+       sauvegarde
        ======================================================== -->
   <section id="vue-reglages" class="vue" hidden>
     <div class="barre-haut">
@@ -420,8 +516,64 @@
       <button type="button" data-echelle="1.35">Très grand</button>
     </div>
 
+    <!-- Ces cases portent data-reglage : app.js les garde d'accord avec les
+         mêmes réglages ailleurs (l'interrupteur de l'accueil, les boutons
+         « Une seule chose » / « Voir tout »). -->
+    <h3 style="margin-top:24px">Routines et tâches</h3>
+    <label class="interrupteur" for="reglage-journee-difficile">
+      <span>Journée difficile</span>
+      <input type="checkbox" role="switch" id="reglage-journee-difficile" data-reglage="journeeDifficile">
+    </label>
+    <p><small>Les routines ne montrent que leurs étapes marquées
+       «&nbsp;essentielles&nbsp;». Les routines elles-mêmes ne changent pas. Le même
+       interrupteur se trouve sur l'accueil.</small></p>
+
+    <label class="interrupteur" for="reglage-routine-une-chose">
+      <span>Routines : mode «&nbsp;Une seule chose&nbsp;»</span>
+      <input type="checkbox" id="reglage-routine-une-chose" data-reglage="routineUneChose">
+    </label>
+    <label class="interrupteur" for="reglage-tache-une-chose">
+      <span>Tâches : mode «&nbsp;Une seule chose&nbsp;»</span>
+      <input type="checkbox" id="reglage-tache-une-chose" data-reglage="tacheUneEtape">
+    </label>
+    <p><small>Seule l'étape en cours s'affiche, en grand. Le bouton
+       «&nbsp;Voir tout&nbsp;», en haut de l'écran, ramène la vue complète.</small></p>
+
+    <label class="interrupteur" for="reglage-transitions">
+      <span>Transitions douces</span>
+      <input type="checkbox" id="reglage-transitions" data-reglage="transitionsDouces">
+    </label>
+    <p><small>Entre deux étapes d'une routine (ou d'une tâche en mode
+       «&nbsp;Une seule chose&nbsp;»), une courte pause avec un message calme et le nom de
+       l'étape qui vient. Un toucher la termine tout de suite.</small></p>
+    <!-- Masqué quand les transitions douces sont éteintes. -->
+    <div id="zone-duree-transition">
+      <p style="margin-bottom:8px"><small>Durée de la pause :</small></p>
+      <div class="choix" id="choix-duree-transition" role="group" aria-label="Durée de la pause">
+        <button type="button" data-secondes="5" aria-label="5 secondes">5 s</button>
+        <button type="button" data-secondes="10" aria-label="10 secondes">10 s</button>
+        <button type="button" data-secondes="20" aria-label="20 secondes">20 s</button>
+        <button type="button" data-secondes="30" aria-label="30 secondes">30 s</button>
+      </div>
+    </div>
+
+    <label class="interrupteur" for="reglage-retour-fait">
+      <span>Petit «&nbsp;✓ Fait&nbsp;» après chaque étape</span>
+      <input type="checkbox" id="reglage-retour-fait" data-reglage="retourFait">
+    </label>
+    <p><small>Un petit mot discret apparaît puis s'efface doucement quand tu
+       finis une étape. Sans son ni vibration.</small></p>
+
+    <label class="interrupteur" for="reglage-historique">
+      <span>Garder un historique des routines terminées</span>
+      <input type="checkbox" id="reglage-historique" data-reglage="historiqueActif">
+    </label>
+    <p><small>Seulement la date et le nom de chaque routine terminée. Tu le
+       trouves en bas de «&nbsp;Mes routines&nbsp;», et tu peux le vider à
+       tout moment.</small></p>
+
     <h3 style="margin-top:24px">Sauvegarde de mes données</h3>
-    <p><small>Tes routines, tes tâches et tes réglages sont gardés dans le
+    <p><small>Tes routines, tes tâches, ton historique et tes réglages sont gardés dans le
        navigateur de ce téléphone. Si ses données sont effacées (nettoyage du
        cache, réinstallation, changement de téléphone), tout disparaît. Un
        fichier de sauvegarde, rangé dans le téléphone, permet de tout
