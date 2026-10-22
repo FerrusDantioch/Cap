@@ -15,6 +15,11 @@ const CLE_ROUTINES = 'cap_routines';
 const CLE_TACHES = 'cap_taches';
 const CLE_REGLAGES = 'cap_reglages';
 const CLE_ROUTINE_EN_COURS = 'cap_routine_en_cours';
+const CLE_HISTORIQUE = 'cap_historique';
+
+// L'historique garde au plus les 500 dernières routines terminées, pour ne
+// jamais remplir la mémoire du navigateur.
+const HISTORIQUE_MAX = 500;
 
 // Les tailles de texte proposées dans Réglages (1 = normal).
 const ECHELLES = [0.9, 1, 1.15, 1.35];
@@ -46,6 +51,19 @@ function sauverTaches() {
   localStorage.setItem(CLE_TACHES, JSON.stringify(taches));
 }
 
+// L'historique des routines terminées : [{ id, date, nom, essentiel? }],
+// du plus ancien au plus récent.
+function chargerHistorique() {
+  let brut = null;
+  try { brut = JSON.parse(localStorage.getItem(CLE_HISTORIQUE)); } catch (e) { /* rien */ }
+  const liste = Array.isArray(brut) ? brut.map(nettoyerEntreeHistorique).filter(Boolean) : [];
+  return liste.sort((a, b) => a.date - b.date).slice(-HISTORIQUE_MAX);
+}
+function sauverHistorique() {
+  try { localStorage.setItem(CLE_HISTORIQUE, JSON.stringify(historique)); }
+  catch (e) { /* mémoire pleine : la routine est finie quand même */ }
+}
+
 function chargerReglages() {
   const defaut = {
     vibrationMinuteur: true,
@@ -65,7 +83,11 @@ function chargerReglages() {
     // Transitions douces : une courte pause entre deux étapes (en secondes).
     // Éteintes au départ, pour ne surprendre personne.
     transitionsDouces: false,
-    dureeTransition: 10
+    dureeTransition: 10,
+    // Petit « ✓ Fait » discret après chaque étape (désactivable).
+    retourFait: true,
+    // Noter chaque routine terminée dans l'historique (date et nom).
+    historiqueActif: true
   };
   try { return Object.assign(defaut, JSON.parse(localStorage.getItem(CLE_REGLAGES)) || {}); }
   catch (e) { return defaut; }
@@ -180,6 +202,7 @@ const MODELES_ROUTINES = [
 let routines = chargerRoutines();
 let taches = chargerTaches();
 let reglages = chargerReglages();
+let historique = chargerHistorique();
 
 let vueCourante = 'accueil';
 let routineEnEdition = null;   // id de la routine modifiée, ou null si création
@@ -187,6 +210,7 @@ let tacheEnEdition = null;     // id de la tâche modifiée, ou null si créatio
 let ongletTachesActif = 'en-cours';
 let tacheOuverteId = null;
 let tdIndexAffiche = null;     // étape montrée en mode « une étape à la fois »
+let chronoHandle = null;       // rafraîchit « Temps passé » tant que la tâche est à l'écran
 
 // Routine commencée : { routine, index, passees }. Elle est enregistrée à
 // chaque pas (voir sauverRoutineEnCours) : un appel, un autre écran, ou
@@ -282,6 +306,35 @@ function pluriel(n, un, plusieurs) {
   return n + ' ' + (n > 1 ? plusieurs : un);
 }
 
+// Une durée en minutes, écrite simplement : « 12 min », « 1 h 05 ».
+function texteMinutes(n) {
+  if (n < 1) return 'moins d’1 min';
+  if (n < 60) return n + ' min';
+  const m = n % 60;
+  return Math.floor(n / 60) + ' h' + (m ? ' ' + String(m).padStart(2, '0') : '');
+}
+
+// Retour positif sobre : un petit « ✓ Fait » apparaît en bas de l'écran
+// par un fondu lent, reste un instant, puis s'efface. Il ne bouge pas, ne
+// clignote pas, ne fait aucun bruit, et ne gêne aucun toucher. Désactivable
+// dans Réglages. Les lecteurs d'écran ont déjà leur propre annonce.
+let elementFait = null;
+let delaiFait = null;
+
+function montrerFait() {
+  if (!reglages.retourFait) return;
+  if (!elementFait) {
+    elementFait = document.createElement('div');
+    elementFait.className = 'retour-fait';
+    elementFait.setAttribute('aria-hidden', 'true');
+    elementFait.textContent = '✓ Fait';
+    document.body.appendChild(elementFait);
+  }
+  clearTimeout(delaiFait);
+  elementFait.classList.add('visible');
+  delaiFait = setTimeout(() => elementFait.classList.remove('visible'), 1600);
+}
+
 // Remplit un élément avec une étape : son image (si elle en a une), puis
 // son texte. Tout passe par textContent : aucun risque d'injecter du code.
 function remplirEtape(el, etape) {
@@ -322,6 +375,7 @@ function creerElementPause() {
   b.type = 'button';
   b.className = 'pause-douce';
   b.innerHTML =
+    '<span class="pause-fait">✓ Fait</span>' +
     '<span class="pause-message"></span>' +
     '<span class="pause-ensuite"></span>' +
     '<span class="pause-jauge"><span class="pause-barre"></span></span>' +
@@ -335,13 +389,16 @@ function creerElementPause() {
 }
 
 // nomVue : l'écran où afficher la pause ; etape : celle qui vient ensuite ;
-// suite : ce qu'il faut faire quand la pause est finie.
-function lancerPause(nomVue, etape, suite) {
+// suite : ce qu'il faut faire quand la pause est finie ; fait : true si
+// l'étape d'avant vient d'être faite (et non passée) — la pause commence
+// alors par le petit « ✓ Fait », à la place du message qui s'efface.
+function lancerPause(nomVue, etape, suite, fait) {
   finirPause(false);
   if (!elementPause) elementPause = creerElementPause();
   const vue = document.getElementById('vue-' + nomVue);
   const duree = reglages.dureeTransition * 1000;
 
+  elementPause.querySelector('.pause-fait').classList.toggle('masque', !(fait && reglages.retourFait));
   elementPause.querySelector('.pause-message').textContent = MESSAGE_PAUSE;
   const ensuite = elementPause.querySelector('.pause-ensuite');
   ensuite.textContent = 'Ensuite : ';
@@ -450,6 +507,7 @@ function afficherVue(nom) {
   // Quitter l'écran d'une routine coupe le petit minuteur de l'étape : il
   // repartira de zéro au retour (on ne revient pas à une étape « en retard »).
   if (nom !== 'routine-lancer') arreterMinuteurEtape();
+  if (nom !== 'tache-detail') clearInterval(chronoHandle);
   if (nom === 'minuteur') minFiniNonVu = false;
   // Changer d'écran annule une pause douce en cours.
   finirPause(false);
@@ -512,6 +570,12 @@ function majAccueil() {
     }
     zone.appendChild(boutonEnCours(titre, sous, () => afficherVue('minuteur')));
   }
+
+  // Une tâche dont le chrono tourne : on la retrouve d'un toucher, et on
+  // pense à l'arrêter.
+  taches.filter(chronoTourne).forEach(t => {
+    zone.appendChild(boutonEnCours('Chrono en cours', t.nom, () => ouvrirTache(t.id)));
+  });
 
   majTacheDuJour();
 }
@@ -1060,9 +1124,12 @@ function majAffichageRoutineLancer() {
   demarrerMinuteurEtape(etape);
 }
 
-function etapeSuivanteRoutine() {
+// fait : true si l'étape quittée a été faite, false si elle a été passée
+// (le petit « ✓ Fait » ne s'affiche que dans le premier cas).
+function etapeSuivanteRoutine(fait) {
   const suivante = etapesMontrees(routineEnCours).find(i => i > routineEnCours.index);
   if (suivante === undefined) {
+    // L'écran « Routine terminée » suffit : pas de « ✓ Fait » en plus.
     terminerRoutine();
     return;
   }
@@ -1075,10 +1142,11 @@ function etapeSuivanteRoutine() {
     lancerPause('routine-lancer', routineEnCours.routine.etapes[suivante], () => {
       majAffichageRoutineLancer();
       document.getElementById('btn-rl-valider').focus();
-    });
+    }, fait);
     return;
   }
   majAffichageRoutineLancer();
+  if (fait) montrerFait();
 }
 
 function etapePrecedenteRoutine() {
@@ -1092,7 +1160,7 @@ function etapePrecedenteRoutine() {
 function validerEtapeRoutine() {
   // Une étape passée puis refaite après un retour en arrière n'est plus « passée ».
   routineEnCours.passees = routineEnCours.passees.filter(i => i !== routineEnCours.index);
-  etapeSuivanteRoutine();
+  etapeSuivanteRoutine(true);
 }
 
 // Passer une étape impossible aujourd'hui, sans mentir (« C'est fait ») ni
@@ -1100,7 +1168,7 @@ function validerEtapeRoutine() {
 function passerEtapeRoutine() {
   if (!routineEnCours.passees.includes(routineEnCours.index)) routineEnCours.passees.push(routineEnCours.index);
   annoncer('Étape passée.');
-  etapeSuivanteRoutine();
+  etapeSuivanteRoutine(false);
 }
 
 function terminerRoutine() {
@@ -1117,7 +1185,70 @@ function terminerRoutine() {
   // n'étaient pas au programme aujourd'hui, elles ne sont pas « ratées ».
   const allegee = reglages.journeeDifficile && nombreEssentielles(routine) > 0;
   document.getElementById('rl-fin-difficile').classList.toggle('masque', !allegee);
+  noterDansHistorique(routine, allegee);
   afficherVue('routine-fin');
+}
+
+/* ---------- 9 bis. Historique des routines terminées ---------- */
+
+// Seulement la date, l'heure et le nom de chaque routine terminée (et
+// « l'essentiel » pour une journée difficile). Aucun total, aucune série,
+// aucun score : juste de quoi se souvenir, si on en a envie. Une routine
+// arrêtée en cours de route n'est pas notée.
+function noterDansHistorique(routine, essentiel) {
+  if (!reglages.historiqueActif) return;
+  const entree = { id: creerId('h'), date: Date.now(), nom: routine.nom };
+  if (essentiel) entree.essentiel = true;
+  historique.push(entree);
+  historique = historique.slice(-HISTORIQUE_MAX);
+  sauverHistorique();
+}
+
+// « Aujourd'hui », « Hier », sinon « Lundi 20 octobre » (avec l'année si
+// ce n'est pas l'année en cours).
+function libelleJour(ts) {
+  const d = new Date(ts);
+  const maintenant = new Date();
+  const hier = new Date();
+  hier.setDate(hier.getDate() - 1);
+  if (d.toDateString() === maintenant.toDateString()) return 'Aujourd’hui';
+  if (d.toDateString() === hier.toDateString()) return 'Hier';
+  const options = { weekday: 'long', day: 'numeric', month: 'long' };
+  if (d.getFullYear() !== maintenant.getFullYear()) options.year = 'numeric';
+  const texte = d.toLocaleDateString('fr-FR', options);
+  return texte.charAt(0).toUpperCase() + texte.slice(1);
+}
+
+// Une carte par jour, du plus récent au plus ancien.
+function rendreHistorique() {
+  const cont = document.getElementById('liste-historique');
+  document.getElementById('historique-desactive').classList.toggle('masque', reglages.historiqueActif);
+  document.getElementById('btn-historique-vider').classList.toggle('masque', historique.length === 0);
+  if (historique.length === 0) {
+    cont.innerHTML = '<p class="vide">Aucune routine terminée n’est notée ici.</p>';
+    return;
+  }
+  const jours = [];
+  historique.slice().reverse().forEach(h => {
+    const libelle = libelleJour(h.date);
+    if (!jours.length || jours[jours.length - 1].libelle !== libelle) jours.push({ libelle, entrees: [] });
+    jours[jours.length - 1].entrees.push(h);
+  });
+  cont.innerHTML = jours.map(j => `
+    <div class="fiche">
+      <h2 class="jour-historique">${echapper(j.libelle)}</h2>
+      <ul class="liste-historique">
+        ${j.entrees.map(h => '<li>' + echapper(h.nom) + ' <span class="duree">· ' + heureLisible(h.date) +
+          (h.essentiel ? ' · l’essentiel' : '') + '</span></li>').join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+function ouvrirHistorique() {
+  desarmerBouton(document.getElementById('btn-historique-vider'));
+  rendreHistorique();
+  afficherVue('historique');
 }
 
 function arreterRoutine() {
@@ -1205,7 +1336,7 @@ function rendreListeTaches() {
     const faites = t.etapes.filter(e => e.faite).length;
     let meta = ongletTachesActif === 'en-cours'
       ? `${faites} / ${t.etapes.length} étapes faites`
-      : 'Terminée le ' + formaterDate(t.termineeLe);
+      : 'Terminée le ' + formaterDate(t.termineeLe) + comparaisonTemps(t);
     if (t.epinglee) meta += ' · sur l’accueil';
     return `
       <div class="fiche">
@@ -1234,6 +1365,7 @@ function ouvrirFormulaireTache(id) {
   miniEl.value = mini ? mini.texte : '';
   miniEl.dataset.texte = mini ? mini.texte : '';
   miniEl.dataset.faite = mini && mini.faite ? '1' : '';
+  document.getElementById('tf-prevu').value = t && t.tempsPrevu ? String(t.tempsPrevu) : '';
   const etapesEl = document.getElementById('tf-etapes');
   viderEditeur(etapesEl);
   if (t) {
@@ -1260,6 +1392,9 @@ function enregistrerTache() {
     const dejaFaite = miniEl.dataset.faite === '1' && miniTexte === miniEl.dataset.texte;
     etapes.unshift({ texte: miniTexte, faite: dejaFaite, mini: true });
   }
+  // Temps prévu (facultatif) : des minutes entières, de 1 à 600 (10 h).
+  const prevu = parseInt(document.getElementById('tf-prevu').value, 10);
+  const tempsPrevu = prevu >= 1 ? Math.min(prevu, 600) : null;
   if (!nom) { annoncer('Donne un nom à la tâche.'); document.getElementById('tf-nom').focus(); return; }
   if (etapes.length === 0) { annoncer('Ajoute au moins une étape.'); return; }
 
@@ -1268,13 +1403,17 @@ function enregistrerTache() {
     const t = taches.find(x => x.id === tacheEnEdition);
     t.nom = nom;
     t.etapes = etapes;
+    if (tempsPrevu) t.tempsPrevu = tempsPrevu;
+    else delete t.tempsPrevu;
     majEtatTache(t);
     sauverTaches();
     ouvrirTache(t.id);
     annoncer('Tâche modifiée.');
     return;
   }
-  taches.push({ id: creerId('t'), nom, etapes, termineeLe: null });
+  const nouvelle = { id: creerId('t'), nom, etapes, termineeLe: null };
+  if (tempsPrevu) nouvelle.tempsPrevu = tempsPrevu;
+  taches.push(nouvelle);
   sauverTaches();
   ongletTachesActif = 'en-cours';
   majOngletsTaches();
@@ -1296,6 +1435,7 @@ function ouvrirTache(id) {
   // Si le bouton a été armé sur une autre tâche il y a moins de 4 secondes,
   // on le désarme : chaque tâche repart avec ses deux appuis.
   desarmerBouton(document.getElementById('btn-td-supprimer'));
+  desarmerBouton(document.getElementById('btn-td-chrono-zero'));
   document.getElementById('titre-tache-detail').textContent = t.nom;
   document.getElementById('td-nouvelle-etape').value = '';
   rendreDetailTache();
@@ -1305,6 +1445,80 @@ function ouvrirTache(id) {
 // Les étapes pas encore faites, par leur position dans la tâche.
 function indexNonFaites(t) {
   return t.etapes.map((e, i) => (e.faite ? -1 : i)).filter(i => i >= 0);
+}
+
+// Chrono de la tâche : { cumul, depuis }. « cumul » est le temps déjà
+// compté, en millisecondes ; « depuis » est l'heure à laquelle il a été
+// lancé, ou null s'il est en pause. Comme le minuteur, il se base sur des
+// heures et non sur un compteur : il reste juste même si le téléphone se
+// verrouille ou si Cap est fermée.
+function tempsChrono(t) {
+  const c = t.chrono;
+  if (!c) return 0;
+  return c.cumul + (c.depuis ? Math.max(0, Date.now() - c.depuis) : 0);
+}
+function chronoTourne(t) {
+  return !!(t.chrono && t.chrono.depuis);
+}
+// À la minute près, jamais à la seconde : le texte ne bouge pas sans arrêt.
+function minutesChrono(t) {
+  return Math.floor(tempsChrono(t) / 60000);
+}
+function lancerChrono(t) {
+  t.chrono = { cumul: tempsChrono(t), depuis: Date.now() };
+}
+function arreterChrono(t) {
+  if (chronoTourne(t)) t.chrono = { cumul: tempsChrono(t), depuis: null };
+}
+
+// L'écart entre le temps prévu et le temps réel, dit de façon neutre et
+// factuelle : une information pour mieux prévoir, jamais un reproche.
+function texteEcart(prevu, reel) {
+  const ecart = reel - prevu;
+  if (ecart === 0) return 'Autant que prévu.';
+  return texteMinutes(Math.abs(ecart)) + (ecart > 0 ? ' de plus que prévu.' : ' de moins que prévu.');
+}
+
+// « · prévu 20 min, réel 35 min » dans la liste des tâches terminées,
+// seulement avec ce qui est connu.
+function comparaisonTemps(t) {
+  const parties = [];
+  if (t.tempsPrevu) parties.push('prévu ' + texteMinutes(t.tempsPrevu));
+  if (t.chrono) parties.push('réel ' + texteMinutes(minutesChrono(t)));
+  return parties.length ? ' · ' + parties.join(', ') : '';
+}
+
+// La carte « Temps passé » du détail de la tâche.
+function majTempsTache() {
+  const t = taches.find(x => x.id === tacheOuverteId);
+  if (!t) return;
+  const mesure = !!t.chrono;
+  const parties = [mesure ? texteMinutes(minutesChrono(t)) : 'Pas encore mesuré'];
+  if (t.tempsPrevu) parties.push('prévu : ' + texteMinutes(t.tempsPrevu));
+  const texte = parties.join(' · ');
+  const el = document.getElementById('td-temps-texte');
+  if (el.textContent !== texte) el.textContent = texte;
+
+  // L'écart n'apparaît qu'une fois la tâche terminée (et le chrono
+  // arrêté) : le temps réel est alors connu.
+  const avecEcart = !!t.tempsPrevu && mesure && !chronoTourne(t) && estTermineeTache(t);
+  const ecartEl = document.getElementById('td-temps-ecart');
+  ecartEl.textContent = avecEcart ? texteEcart(t.tempsPrevu, minutesChrono(t)) : '';
+  ecartEl.classList.toggle('masque', !avecEcart);
+  document.getElementById('td-temps-note').classList.toggle('masque', !avecEcart);
+
+  document.getElementById('btn-td-chrono').textContent =
+    chronoTourne(t) ? 'Pause' : (mesure ? 'Reprendre' : 'Commencer');
+  document.getElementById('btn-td-chrono-zero').classList.toggle('masque', !mesure);
+}
+
+// Tant que la tâche est à l'écran et que son chrono tourne, le texte est
+// revu chaque seconde (il ne change qu'une fois par minute). Quitter
+// l'écran arrête cette mise à jour, pas le chrono.
+function suivreChrono() {
+  clearInterval(chronoHandle);
+  const t = taches.find(x => x.id === tacheOuverteId);
+  if (t && chronoTourne(t)) chronoHandle = setInterval(majTempsTache, 1000);
 }
 
 function rendreDetailTache() {
@@ -1380,12 +1594,17 @@ function rendreDetailTache() {
   const btnEpingle = document.getElementById('btn-td-epingler');
   btnEpingle.setAttribute('aria-pressed', String(!!t.epinglee));
   btnEpingle.textContent = t.epinglee ? 'Retirer de l’accueil' : 'Épingler sur l’accueil';
+
+  majTempsTache();
+  suivreChrono();
 }
 
 // Coche une étape (depuis la tâche ou depuis l'accueil), puis enregistre.
 function cocherEtapeTache(t, idx, faite) {
   t.etapes[idx].faite = faite;
   majEtatTache(t);
+  // Tâche finie : son chrono s'arrête tout seul, le temps réel est connu.
+  if (faite && estTermineeTache(t)) arreterChrono(t);
   sauverTaches();
   if (faite && estTermineeTache(t)) annoncer('Tâche terminée : ' + t.nom);
 }
@@ -1619,11 +1838,12 @@ function recommencerMinuteur() {
 // sait le relire. Le fichier ne quitte jamais l'appareil : il est copié
 // vers le dossier Téléchargements, sans aucun appel réseau.
 //
-// Restaurer n'efface rien de ce qui est déjà là : les routines et les
-// tâches du fichier sont AJOUTÉES, sauf celles qui existent déjà (même
+// Restaurer n'efface rien de ce qui est déjà là : les routines, les tâches
+// et l'historique du fichier sont AJOUTÉS, sauf ce qui existe déjà (même
 // identifiant) — restaurer deux fois ne crée donc pas de doublon. Seuls les
 // réglages (thème, couleurs, taille du texte, options du minuteur, journée
-// difficile, modes « Une seule chose », transitions douces) sont remplacés.
+// difficile, modes « Une seule chose », transitions douces, petit « Fait »,
+// historique allumé ou non) sont remplacés.
 //
 // Version 2 du fichier : les étapes de routine sont des objets
 // { texte, image, minutes } au lieu de simples textes, et les étapes de
@@ -1632,11 +1852,14 @@ function recommencerMinuteur() {
 //
 // Version 3 : une étape de routine peut être « essentielle »
 // ({ ..., essentielle: true }) ; la première étape d'une tâche peut être sa
-// petite action de démarrage ({ ..., mini: true }) ; les réglages comptent
-// de nouvelles cases (journeeDifficile, routineUneChose, transitionsDouces,
-// dureeTransition). Ce ne sont que des ajouts facultatifs : un fichier de
-// version 1 ou 2 se relit tel quel (une étape sans « essentielle » ne l'est
-// simplement pas).
+// petite action de démarrage ({ ..., mini: true }) ; une tâche peut avoir
+// un temps prévu (tempsPrevu, en minutes) et un chrono ({ cumul, depuis }) ;
+// le fichier contient l'historique des routines terminées
+// ([{ id, date, nom, essentiel? }]) ; les réglages comptent de nouvelles
+// cases (journeeDifficile, routineUneChose, transitionsDouces,
+// dureeTransition, retourFait, historiqueActif). Ce ne sont que des ajouts
+// facultatifs : un fichier de version 1 ou 2 se relit tel quel (une étape
+// sans « essentielle » ne l'est simplement pas).
 //
 // ATTENTION : les fonctions nettoyer…() ci-dessous ne gardent QUE les
 // informations qu'elles connaissent, au chargement comme à la restauration.
@@ -1669,7 +1892,8 @@ function enregistrerSauvegarde() {
     exporte: new Date().toISOString(),
     routines: routines,
     taches: taches,
-    reglages: reglages
+    reglages: reglages,
+    historique: historique
   };
 
   // La date dans le nom permet de garder plusieurs sauvegardes côte à côte
@@ -1745,14 +1969,33 @@ function nettoyerTache(t) {
     termineeLe: typeof t.termineeLe === 'number' && Number.isFinite(t.termineeLe) ? t.termineeLe : null
   };
   if (t.epinglee === true) tache.epinglee = true;
+  if (Number.isInteger(t.tempsPrevu) && t.tempsPrevu >= 1 && t.tempsPrevu <= 600) tache.tempsPrevu = t.tempsPrevu;
+  // Le chrono : un temps déjà compté (positif) et, s'il tourne, son heure de
+  // départ. Un chrono vide n'est pas gardé.
+  const c = t.chrono;
+  if (c && typeof c === 'object' && Number.isFinite(c.cumul) && c.cumul >= 0) {
+    const depuis = Number.isFinite(c.depuis) && c.depuis > 0 ? c.depuis : null;
+    if (c.cumul > 0 || depuis) tache.chrono = { cumul: c.cumul, depuis };
+  }
   majEtatTache(tache);
   return tache;
+}
+
+// Une ligne de l'historique : une date, un nom, et « essentiel » pour une
+// routine faite en version journée difficile.
+function nettoyerEntreeHistorique(h) {
+  if (!h || typeof h !== 'object' || typeof h.nom !== 'string' || !h.nom.trim()) return null;
+  if (!Number.isFinite(h.date) || h.date <= 0) return null;
+  const entree = { id: idPropre(h.id, 'h'), date: h.date, nom: h.nom };
+  if (h.essentiel === true) entree.essentiel = true;
+  return entree;
 }
 
 function nettoyerReglages(r) {
   const propre = {};
   ['vibrationMinuteur', 'ecranAllumeMinuteur', 'preavisMinuteur', 'tacheUneEtape',
-    'routineUneChose', 'journeeDifficile', 'transitionsDouces'].forEach(cle => {
+    'routineUneChose', 'journeeDifficile', 'transitionsDouces', 'retourFait',
+    'historiqueActif'].forEach(cle => {
     if (typeof r[cle] === 'boolean') propre[cle] = r[cle];
   });
   if (DUREES_TRANSITION.includes(r.dureeTransition)) propre.dureeTransition = r.dureeTransition;
@@ -1771,12 +2014,13 @@ function lireSauvegarde(d) {
     return 'Ce fichier est une sauvegarde d’une autre application (« ' + String(d.app) +
       ' ») : il ne peut pas être restauré dans Cap.';
   }
-  if (!['routines', 'taches', 'reglages'].some(cle => cle in d)) return etranger;
+  if (!['routines', 'taches', 'reglages', 'historique'].some(cle => cle in d)) return etranger;
   return {
     exporte: Date.parse(d.exporte) || null,
     routines: Array.isArray(d.routines) ? d.routines.map(nettoyerRoutine).filter(Boolean) : [],
     taches: Array.isArray(d.taches) ? d.taches.map(nettoyerTache).filter(Boolean) : [],
-    reglages: d.reglages && typeof d.reglages === 'object' ? nettoyerReglages(d.reglages) : {}
+    reglages: d.reglages && typeof d.reglages === 'object' ? nettoyerReglages(d.reglages) : {},
+    historique: Array.isArray(d.historique) ? d.historique.map(nettoyerEntreeHistorique).filter(Boolean) : []
   };
 }
 
@@ -1784,6 +2028,8 @@ function resumeRestauration(r) {
   const contenu = [];
   if (r.routines.length) contenu.push(pluriel(r.routines.length, 'routine', 'routines'));
   if (r.taches.length) contenu.push(pluriel(r.taches.length, 'tâche', 'tâches'));
+  // Pas de nombre pour l'historique : ce n'est pas un score.
+  if (r.historique.length) contenu.push('ton historique');
   const avecReglages = Object.keys(r.reglages).length > 0;
   if (avecReglages) contenu.push('tes réglages');
   if (!contenu.length) return null;
@@ -1792,7 +2038,7 @@ function resumeRestauration(r) {
     ? contenu.slice(0, -1).join(', ') + ' et ' + contenu[contenu.length - 1]
     : contenu[0];
   let texte = (r.exporte ? 'Sauvegarde du ' + formaterJour(r.exporte) : 'Cette sauvegarde') + ' : ' + liste + '. ';
-  if (r.routines.length || r.taches.length) texte += 'Ce qui est déjà sur ce téléphone est gardé, sans doublon. ';
+  if (r.routines.length || r.taches.length || r.historique.length) texte += 'Ce qui est déjà sur ce téléphone est gardé, sans doublon. ';
   if (avecReglages) texte += 'Les réglages actuels seront remplacés par ceux du fichier.';
   return texte.trim();
 }
@@ -1842,16 +2088,22 @@ function confirmerRestauration() {
   const idsTaches = new Set(taches.map(x => x.id));
   const nouvellesTaches = r.taches.filter(x => !idsTaches.has(x.id));
 
+  const idsHistorique = new Set(historique.map(x => x.id));
+  const nouvellesEntrees = r.historique.filter(x => !idsHistorique.has(x.id));
+
   routines = routines.concat(nouvellesRoutines);
   taches = taches.concat(nouvellesTaches);
   // La tâche déjà épinglée sur ce téléphone garde sa place.
   unSeulEpinglage(taches);
+  // L'historique reste rangé par date, et limité aux 500 plus récentes.
+  historique = historique.concat(nouvellesEntrees).sort((a, b) => a.date - b.date).slice(-HISTORIQUE_MAX);
   Object.assign(reglages, r.reglages);
 
   try {
     sauverRoutines();
     sauverTaches();
     sauverReglages();
+    localStorage.setItem(CLE_HISTORIQUE, JSON.stringify(historique));
   } catch (e) {
     messageSauvegarde('La restauration n’a pas pu être enregistrée : la mémoire du navigateur est peut-être pleine.');
     annoncer('Restauration impossible.');
@@ -1870,6 +2122,7 @@ function confirmerRestauration() {
   const bilan = 'Restauration terminée : ' +
     n1 + (n1 > 1 ? ' routines ajoutées, ' : ' routine ajoutée, ') +
     n2 + (n2 > 1 ? ' tâches ajoutées' : ' tâche ajoutée') +
+    (nouvellesEntrees.length ? ', historique complété' : '') +
     (Object.keys(r.reglages).length ? ', réglages rétablis.' : '.');
   messageSauvegarde(bilan);
   annoncer(bilan);
@@ -1910,6 +2163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cocherEtapeTache(t, idx, true);
     if (!estTermineeTache(t)) annoncer('Étape cochée : ' + t.etapes[idx].texte);
     majTacheDuJour();
+    montrerFait();
   });
   document.getElementById('btn-tdj-ouvrir').addEventListener('click', () => {
     const t = tacheEpinglee();
@@ -1928,6 +2182,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-nouvelle-routine').addEventListener('click', () => ouvrirFormulaireRoutine(null));
   document.getElementById('btn-modeles').addEventListener('click', () => {
     montrerModeles(document.getElementById('zone-modeles').classList.contains('masque'));
+  });
+
+  // ----- Routines : historique -----
+  document.getElementById('btn-historique').addEventListener('click', ouvrirHistorique);
+  document.getElementById('btn-historique-vider').addEventListener('click', (e) => {
+    armerSuppression(e.currentTarget, 'Confirmer : tout effacer ?', () => {
+      historique = [];
+      sauverHistorique();
+      rendreHistorique();
+      annoncer('Historique vidé.');
+    });
   });
   document.getElementById('liste-modeles').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-modele]');
@@ -2023,6 +2288,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const t = taches.find(x => x.id === tacheOuverteId);
     cocherEtapeTache(t, parseInt(e.target.dataset.idx, 10), e.target.checked);
     rendreDetailTache();
+    if (e.target.checked) montrerFait();
   });
   document.getElementById('td-ajout-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -2052,15 +2318,16 @@ document.addEventListener('DOMContentLoaded', () => {
     cocherEtapeTache(t, fait, true);
     tdIndexAffiche = prochaineNonFaite(t, fait);
     rendreDetailTache();
-    if (estTermineeTache(t)) return;
+    if (estTermineeTache(t)) { montrerFait(); return; }
     // Transitions douces : la pause s'affiche par-dessus l'étape suivante,
-    // déjà prête derrière.
+    // déjà prête derrière, et commence par le petit « ✓ Fait ».
     if (reglages.transitionsDouces) {
       lancerPause('tache-detail', t.etapes[tdIndexAffiche], () => {
         document.getElementById('btn-td-ue-fait').focus();
-      });
+      }, true);
     } else {
       annoncer('Étape cochée. Suivante : ' + t.etapes[tdIndexAffiche].texte);
+      montrerFait();
     }
   });
   document.getElementById('btn-td-ue-autre').addEventListener('click', () => {
@@ -2071,6 +2338,33 @@ document.addEventListener('DOMContentLoaded', () => {
     annoncer('Étape affichée : ' + t.etapes[tdIndexAffiche].texte);
   });
   document.getElementById('btn-td-epingler').addEventListener('click', basculerEpinglage);
+  // Chrono de la tâche : Commencer / Pause / Reprendre.
+  document.getElementById('btn-td-chrono').addEventListener('click', () => {
+    const t = taches.find(x => x.id === tacheOuverteId);
+    if (!t) return;
+    if (chronoTourne(t)) {
+      arreterChrono(t);
+      annoncer('Chrono en pause : ' + texteMinutes(minutesChrono(t)) + '.');
+    } else {
+      lancerChrono(t);
+      annoncer('Chrono lancé.');
+    }
+    sauverTaches();
+    majTempsTache();
+    suivreChrono();
+  });
+  // Remettre à zéro efface le temps mesuré : deux appuis, comme une suppression.
+  document.getElementById('btn-td-chrono-zero').addEventListener('click', (e) => {
+    armerSuppression(e.currentTarget, 'Confirmer ?', () => {
+      const t = taches.find(x => x.id === tacheOuverteId);
+      if (!t) return;
+      delete t.chrono;
+      sauverTaches();
+      majTempsTache();
+      suivreChrono();
+      annoncer('Chrono remis à zéro.');
+    });
+  });
   document.getElementById('btn-td-modifier').addEventListener('click', () => ouvrirFormulaireTache(tacheOuverteId));
   document.getElementById('btn-td-supprimer').addEventListener('click', (e) => {
     armerSuppression(e.currentTarget, 'Confirmer ?', () => {

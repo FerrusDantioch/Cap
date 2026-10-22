@@ -609,6 +609,32 @@ details.apercu li.faite { text-decoration: line-through; }
 .pause-barre { display: block; height: 100%; width: 100%; background: var(--accent); }
 .pause-aide { display: block; font-size: 0.85rem; color: var(--texte-doux); }
 
+/* « ✓ Fait » en tête de la pause, quand l'étape d'avant vient d'être faite. */
+.pause-fait { display: block; font-weight: 600; color: var(--texte-doux); }
+
+/* Retour positif sobre : un petit « ✓ Fait » en bas de l'écran, qui
+   apparaît et s'efface par un fondu lent (opacité seulement : rien ne
+   bouge, rien ne clignote). Il ne gêne aucun toucher (pointer-events). */
+.retour-fait {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: var(--accent-fond);
+  border: 1px solid var(--accent);
+  /* Un halo de la couleur du fond la détache de ce qu'elle recouvre. */
+  box-shadow: 0 0 0 6px var(--bg);
+  color: var(--texte);
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms ease;
+  z-index: 10;
+}
+.retour-fait.visible { opacity: 1; }
+
 @keyframes apparition-douce {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -684,6 +710,20 @@ details.apercu li.faite { text-decoration: line-through; }
   color: var(--texte-doux);
 }
 .une-etape .etiquette-mini { margin-bottom: 6px; }
+
+/* Carte « Temps passé » d'une tâche (chrono, temps prévu, écart). */
+.temps-tache h2 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--texte-doux);
+  margin-bottom: 6px;
+}
+.temps-valeur { font-size: 1.1rem; font-weight: 600; }
+
+/* Historique : une carte par jour, les routines terminées en dessous. */
+.jour-historique { font-size: 1rem; margin-bottom: 6px; }
+.liste-historique { margin: 0; padding-left: 20px; }
+.liste-historique li { padding: 4px 0; overflow-wrap: anywhere; }
 
 .ajout-etape-rapide {
   display: flex;

@@ -123,6 +123,34 @@
     </div>
 
     <div id="liste-routines"></div>
+
+    <button type="button" id="btn-historique" class="bouton-secondaire" style="margin-top:8px">
+      Historique des routines terminées
+    </button>
+  </section>
+
+  <!-- ========================================================
+       ROUTINES — historique
+       Seulement la date et le nom des routines terminées : aucun total,
+       aucun score, aucune série.
+       ======================================================== -->
+  <section id="vue-historique" class="vue" hidden>
+    <div class="barre-haut">
+      <button type="button" class="bouton-retour" data-accueil aria-label="Retour à l'accueil">←</button>
+      <h1>Historique</h1>
+    </div>
+
+    <p><small>Les routines que tu as terminées, de la plus récente à la
+       plus ancienne.</small></p>
+    <p id="historique-desactive" class="masque"><small>L'historique est en
+       pause : les routines terminées ne sont plus notées. Tu peux le
+       rallumer dans Réglages.</small></p>
+
+    <div id="liste-historique"></div>
+
+    <button type="button" id="btn-historique-vider" class="bouton-secondaire" style="margin-top:8px">
+      Vider l'historique
+    </button>
   </section>
 
   <!-- ========================================================
@@ -270,6 +298,18 @@
       + Ajouter une étape
     </button>
 
+    <!-- Estimation : le temps que la personne pense y passer. Le chrono de
+         la tâche mesure ensuite le temps réel, et les deux sont montrés
+         côte à côte, sans aucun jugement. -->
+    <label for="tf-prevu">Temps prévu pour toute la tâche (facultatif)</label>
+    <div class="duree-libre">
+      <input type="number" id="tf-prevu" min="1" max="600" inputmode="numeric"
+             aria-describedby="tf-prevu-aide">
+      <span>minutes</span>
+    </div>
+    <p id="tf-prevu-aide"><small>Dans la tâche, un chrono peut mesurer le
+       temps vraiment passé. À la fin, tu verras les deux côte à côte.</small></p>
+
     <div class="bouton-rangee">
       <button type="button" id="btn-tf-annuler">Annuler</button>
       <button type="button" id="btn-tf-enregistrer" class="bouton-doux">Enregistrer</button>
@@ -312,7 +352,23 @@
       </form>
     </div>
 
-    <button type="button" id="btn-td-epingler" class="hors-une-chose" aria-pressed="false" style="margin-top:24px">
+    <!-- Temps passé : un chrono qui compte vers le haut, à la minute près.
+         Il se base sur l'heure de départ : il reste juste même si le
+         téléphone se verrouille ou si Cap est fermée. Il s'arrête tout seul
+         quand la dernière étape est cochée. -->
+    <div id="td-temps" class="carte temps-tache hors-une-chose" style="margin-top:24px">
+      <h2>Temps passé</h2>
+      <p id="td-temps-texte" class="temps-valeur"></p>
+      <p id="td-temps-ecart" class="masque"></p>
+      <p id="td-temps-note" class="masque"><small>Une simple information, pour
+         t'aider à prévoir la prochaine fois.</small></p>
+      <div class="bouton-rangee">
+        <button type="button" id="btn-td-chrono" class="bouton-doux">Commencer</button>
+        <button type="button" id="btn-td-chrono-zero" class="bouton-secondaire">Remettre à zéro</button>
+      </div>
+    </div>
+
+    <button type="button" id="btn-td-epingler" class="hors-une-chose" aria-pressed="false">
       Épingler sur l'accueil
     </button>
     <button type="button" id="btn-td-modifier" class="hors-une-chose" style="margin-top:12px">
@@ -501,8 +557,23 @@
       </div>
     </div>
 
+    <label class="interrupteur" for="reglage-retour-fait">
+      <span>Petit «&nbsp;✓ Fait&nbsp;» après chaque étape</span>
+      <input type="checkbox" id="reglage-retour-fait" data-reglage="retourFait">
+    </label>
+    <p><small>Un petit mot discret apparaît puis s'efface doucement quand tu
+       finis une étape. Sans son ni vibration.</small></p>
+
+    <label class="interrupteur" for="reglage-historique">
+      <span>Garder un historique des routines terminées</span>
+      <input type="checkbox" id="reglage-historique" data-reglage="historiqueActif">
+    </label>
+    <p><small>Seulement la date et le nom de chaque routine terminée. Tu le
+       trouves en bas de «&nbsp;Mes routines&nbsp;», et tu peux le vider à
+       tout moment.</small></p>
+
     <h3 style="margin-top:24px">Sauvegarde de mes données</h3>
-    <p><small>Tes routines, tes tâches et tes réglages sont gardés dans le
+    <p><small>Tes routines, tes tâches, ton historique et tes réglages sont gardés dans le
        navigateur de ce téléphone. Si ses données sont effacées (nettoyage du
        cache, réinstallation, changement de téléphone), tout disparaît. Un
        fichier de sauvegarde, rangé dans le téléphone, permet de tout

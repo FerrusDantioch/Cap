@@ -39,6 +39,22 @@ l'accueil.
 - **Modèles de routines** : Le matin, Avant de sortir, Le soir, Ménage,
   Courses, chacun avec 3 étapes essentielles proposées. Un modèle ouvre le
   formulaire pré-rempli ; rien n'est enregistré avant « Enregistrer ».
+- **Temps prévu et temps réel** (tâches) : `tempsPrevu` facultatif, et un
+  chrono par tâche (Commencer / Pause / Reprendre, « Remettre à zéro » en
+  deux appuis) basé sur des heures (`{ cumul, depuis }`), affiché à la
+  minute près. Il s'arrête tout seul quand la tâche est terminée ; l'écart
+  n'est alors montré que de façon neutre (« 15 min de plus que prévu »,
+  « Autant que prévu »), sans couleur ni commentaire. L'accueil signale un
+  chrono qui tourne.
+- **Historique** des routines terminées (pas des routines arrêtées) : date,
+  heure, nom, « l'essentiel » si journée difficile. Une carte par jour,
+  **aucun total, aucun compteur, aucune série** — y compris dans le résumé
+  de restauration (« ton historique », sans nombre). « Vider l'historique »
+  en deux appuis ; désactivable (`historiqueActif`). 500 entrées au plus.
+- **Petit « ✓ Fait »** (`retourFait`, activé par défaut) : après une étape
+  faite (pas passée), un fondu d'opacité en bas de l'écran, sans mouvement
+  ni son (`montrerFait()`). Avec les transitions douces, il s'affiche dans
+  la pause à la place. Pas de « Fait » sur l'écran de fin de routine.
 
 ## Données (localStorage)
 
@@ -48,13 +64,20 @@ l'accueil.
   `nettoyerRoutine()` accepte toujours les deux formes, au chargement comme
   à la restauration. Ne jamais supprimer cette compatibilité.
 - `cap_taches` : `[{ id, nom, etapes: [{ texte, faite, image?, mini? }],
-  termineeLe, epinglee? }]`. Une seule tâche peut être épinglée
-  (`unSeulEpinglage()`). `mini` n'est gardé que sur la première étape.
+  termineeLe, epinglee?, tempsPrevu?, chrono? }]`. Une seule tâche peut
+  être épinglée (`unSeulEpinglage()`). `mini` n'est gardé que sur la
+  première étape. `chrono` : `{ cumul (ms), depuis (heure de départ ou
+  null) }`.
+- `cap_historique` : `[{ id, date, nom, essentiel? }]`, du plus ancien au
+  plus récent, 500 au plus.
 - `cap_routine_en_cours` : `{ id, index, passees }`, la routine commencée.
   Remise à zéro si la routine est modifiée ou supprimée.
 - `cap_reglages` : thème, gamme, `echelle` (taille du texte), options du
   minuteur, `tacheUneEtape`, `routineUneChose`, `journeeDifficile`,
-  `transitionsDouces`, `dureeTransition` (5, 10, 20 ou 30 secondes).
+  `transitionsDouces`, `dureeTransition` (5, 10, 20 ou 30 secondes),
+  `retourFait`, `historiqueActif`.
+- Sauvegarde : contient routines, tâches, réglages **et historique** ; la
+  restauration ajoute sans doublon (même identifiant).
 - Sauvegarde : fichier version 3 ; les fichiers version 1 et 2 se
   restaurent toujours.
 - ⚠️ Les fonctions `nettoyer…()` d'`app.js` ne gardent **que** les champs
@@ -133,7 +156,7 @@ Après toute modification d'un fichier **mis en cache** (`index.html`,
 haut de `sw.js` :
 
 ```js
-const CACHE = 'cap-v12';   // → v13
+const CACHE = 'cap-v13';   // → v14
 ```
 
 Sans ce changement, le navigateur ne retélécharge rien. En cas d'**ajout de
