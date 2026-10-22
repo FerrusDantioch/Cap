@@ -18,6 +18,8 @@ const CLE_ROUTINE_EN_COURS = 'cap_routine_en_cours';
 
 // Les tailles de texte proposées dans Réglages (1 = normal).
 const ECHELLES = [0.9, 1, 1.15, 1.35];
+// Les durées de pause proposées pour les transitions douces, en secondes.
+const DUREES_TRANSITION = [5, 10, 20, 30];
 
 // Les routines et les tâches sont relues à travers les mêmes fonctions de
 // « nettoyage » que la restauration d'une sauvegarde (section 10) : une
@@ -59,7 +61,11 @@ function chargerReglages() {
     tacheUneEtape: false,
     routineUneChose: false,
     // Journée difficile : les routines ne montrent que leurs étapes essentielles.
-    journeeDifficile: false
+    journeeDifficile: false,
+    // Transitions douces : une courte pause entre deux étapes (en secondes).
+    // Éteintes au départ, pour ne surprendre personne.
+    transitionsDouces: false,
+    dureeTransition: 10
   };
   try { return Object.assign(defaut, JSON.parse(localStorage.getItem(CLE_REGLAGES)) || {}); }
   catch (e) { return defaut; }
@@ -141,6 +147,30 @@ const MODELES_ROUTINES = [
       { image: '💡', texte: 'Baisser la lumière' },
       { image: '🎧', texte: 'Un moment calme', minutes: 15 },
       { image: '💤', texte: 'Aller au lit', essentielle: true }
+    ]
+  },
+  {
+    nom: 'Ménage',
+    etapes: [
+      { image: '🎧', texte: 'Mettre de la musique ou le casque, si ça aide' },
+      { image: '🧺', texte: 'Ramasser ce qui traîne et le ranger', minutes: 5, essentielle: true },
+      { image: '🧽', texte: 'Faire la vaisselle', minutes: 15, essentielle: true },
+      { image: '🍽️', texte: 'Essuyer la table et le plan de travail', minutes: 5 },
+      { image: '🧹', texte: 'Passer le balai ou l’aspirateur', minutes: 15 },
+      { image: '🚽', texte: 'Nettoyer les toilettes', minutes: 10 },
+      { image: '🗑️', texte: 'Sortir la poubelle', essentielle: true }
+    ]
+  },
+  {
+    nom: 'Courses',
+    etapes: [
+      { image: '📝', texte: 'Regarder ce qui manque et faire la liste', minutes: 10, essentielle: true },
+      { image: '📅', texte: 'Choisir un moment où il y a moins de monde' },
+      { image: '🎒', texte: 'Prendre des sacs' },
+      { image: '👛', texte: 'Prendre le porte-monnaie ou la carte', essentielle: true },
+      { image: '🎧', texte: 'Prendre le casque ou les bouchons d’oreilles' },
+      { image: '🛒', texte: 'Acheter ce qui est sur la liste', minutes: 30, essentielle: true },
+      { image: '🧺', texte: 'Ranger les courses en rentrant', minutes: 10 }
     ]
   }
 ];
@@ -273,6 +303,81 @@ function etapeHtml(etape) {
     echapper(etape.texte);
 }
 
+// Transitions douces : entre deux étapes, une courte pause avec un message
+// calme et le nom de l'étape qui vient, pour souffler avant de changer
+// d'activité. Une barre fine se vide lentement ; un toucher n'importe où
+// sur la pause la termine tout de suite. Le message est toujours le même :
+// c'est plus prévisible.
+// La pause prend la place de l'écran SOUS la barre du haut : la flèche ←
+// reste là, et quitter l'écran annule la pause (la progression, elle, est
+// déjà enregistrée).
+const MESSAGE_PAUSE = 'Petite pause. Respire tranquillement.';
+let elementPause = null;
+let pauseEnCours = null;   // { vue, debut, handle, suite }
+
+function creerElementPause() {
+  // Toute la pause est un seul grand bouton : un toucher n'importe où
+  // suffit, et au clavier « Entrée » fait la même chose.
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'pause-douce';
+  b.innerHTML =
+    '<span class="pause-message"></span>' +
+    '<span class="pause-ensuite"></span>' +
+    '<span class="pause-jauge"><span class="pause-barre"></span></span>' +
+    '<span class="pause-aide"></span>';
+  b.addEventListener('click', () => {
+    // Un double appui sur « C'est fait » ne doit pas sauter la pause sans
+    // le vouloir : les touchers des 0,6 premières secondes sont ignorés.
+    if (pauseEnCours && Date.now() - pauseEnCours.debut > 600) finirPause(true);
+  });
+  return b;
+}
+
+// nomVue : l'écran où afficher la pause ; etape : celle qui vient ensuite ;
+// suite : ce qu'il faut faire quand la pause est finie.
+function lancerPause(nomVue, etape, suite) {
+  finirPause(false);
+  if (!elementPause) elementPause = creerElementPause();
+  const vue = document.getElementById('vue-' + nomVue);
+  const duree = reglages.dureeTransition * 1000;
+
+  elementPause.querySelector('.pause-message').textContent = MESSAGE_PAUSE;
+  const ensuite = elementPause.querySelector('.pause-ensuite');
+  ensuite.textContent = 'Ensuite : ';
+  const span = document.createElement('span');
+  remplirEtape(span, etape);
+  ensuite.appendChild(span);
+  elementPause.querySelector('.pause-aide').textContent =
+    'La suite arrive dans ' + reglages.dureeTransition + ' secondes. Touche ici pour continuer tout de suite.';
+
+  vue.querySelector('.barre-haut').after(elementPause);
+  vue.classList.add('en-pause');
+
+  // La barre part pleine, puis se vide en une seule glissade régulière qui
+  // dure exactement le temps de la pause.
+  const barre = elementPause.querySelector('.pause-barre');
+  barre.style.transition = 'none';
+  barre.style.width = '100%';
+  void barre.offsetWidth;   // force le navigateur à poser la barre pleine d'abord
+  barre.style.transition = 'width ' + duree + 'ms linear';
+  barre.style.width = '0%';
+
+  pauseEnCours = { vue, debut: Date.now(), suite, handle: setTimeout(() => finirPause(true), duree) };
+  elementPause.focus();
+}
+
+// continuer : true pour passer à la suite, false pour simplement annuler.
+function finirPause(continuer) {
+  const p = pauseEnCours;
+  if (!p) return;
+  pauseEnCours = null;
+  clearTimeout(p.handle);
+  p.vue.classList.remove('en-pause');
+  elementPause.remove();
+  if (continuer) p.suite();
+}
+
 /* ---------- 5. Apparence : thème, gamme de couleurs, taille du texte ---------- */
 
 // « Automatique » suit le réglage clair/sombre du téléphone ; sinon on
@@ -308,6 +413,9 @@ function majAffichageReglages() {
   document.querySelectorAll('#choix-taille button').forEach(b => {
     b.setAttribute('aria-pressed', String(Number(b.dataset.echelle) === Number(reglages.echelle)));
   });
+  document.querySelectorAll('#choix-duree-transition button').forEach(b => {
+    b.setAttribute('aria-pressed', String(Number(b.dataset.secondes) === reglages.dureeTransition));
+  });
   majCasesReglages();
 }
 
@@ -319,6 +427,8 @@ function majCasesReglages() {
   document.querySelectorAll('input[data-reglage]').forEach(c => {
     c.checked = !!reglages[c.dataset.reglage];
   });
+  // Le choix de la durée de pause ne sert que si les transitions sont allumées.
+  document.getElementById('zone-duree-transition').classList.toggle('masque', !reglages.transitionsDouces);
 }
 
 function changerReglageCase(nom, valeur) {
@@ -341,6 +451,8 @@ function afficherVue(nom) {
   // repartira de zéro au retour (on ne revient pas à une étape « en retard »).
   if (nom !== 'routine-lancer') arreterMinuteurEtape();
   if (nom === 'minuteur') minFiniNonVu = false;
+  // Changer d'écran annule une pause douce en cours.
+  finirPause(false);
 
   vueCourante = nom;
   document.querySelectorAll('.vue').forEach(v => {
@@ -431,7 +543,7 @@ function majTacheDuJour() {
     etapeEl.textContent = '';
     const intro = document.createElement('span');
     intro.className = 'intro';
-    intro.textContent = 'Prochaine étape : ';
+    intro.textContent = prochaine.mini ? 'Pour démarrer : ' : 'Prochaine étape : ';
     const contenu = document.createElement('span');
     remplirEtape(contenu, prochaine);
     etapeEl.appendChild(intro);
@@ -712,7 +824,7 @@ function rendreModeles() {
   document.getElementById('liste-modeles').innerHTML = MODELES_ROUTINES.map((m, i) => `
     <div class="fiche">
       <div class="nom">${echapper(m.nom)}</div>
-      <div class="meta">${pluriel(m.etapes.length, 'étape', 'étapes')}</div>
+      <div class="meta">${pluriel(m.etapes.length, 'étape', 'étapes')} · dont ${pluriel(nombreEssentielles(m), 'essentielle', 'essentielles')}</div>
       <details class="apercu">
         <summary>Voir les étapes</summary>
         ${listeEtapesHtml(m.etapes)}
@@ -906,7 +1018,7 @@ function majAffichageRoutineLancer() {
   if (reglages.journeeDifficile) {
     note.querySelector('small').textContent = nbEss
       ? 'Journée difficile : seulement les étapes essentielles (' + nbEss + ' sur ' + routine.etapes.length + ').'
-      : 'Journée difficile : cette routine n’a pas encore d’étape essentielle, elle reste donc complète. Tu peux en choisir avec « Modifier ».';
+      : 'Journée difficile : cette routine n’a pas encore d’étape essentielle, elle reste donc complète. Tu peux en choisir avec « Modifier ».';
   }
   note.classList.toggle('masque', !reglages.journeeDifficile);
   document.getElementById('rl-apercu-titre').textContent = reglages.journeeDifficile && nbEss
@@ -956,6 +1068,16 @@ function etapeSuivanteRoutine() {
   }
   routineEnCours.index = suivante;
   sauverRoutineEnCours();
+  if (reglages.transitionsDouces) {
+    // La durée prévue de l'étape finie s'arrête pendant la pause ; celle de
+    // l'étape suivante ne démarrera qu'à la fin de la pause.
+    arreterMinuteurEtape();
+    lancerPause('routine-lancer', routineEnCours.routine.etapes[suivante], () => {
+      majAffichageRoutineLancer();
+      document.getElementById('btn-rl-valider').focus();
+    });
+    return;
+  }
   majAffichageRoutineLancer();
 }
 
@@ -1104,10 +1226,18 @@ function ouvrirFormulaireTache(id) {
   tacheEnEdition = t ? id : null;
   document.getElementById('titre-tache-form').textContent = t ? 'Modifier la tâche' : 'Nouvelle tâche';
   document.getElementById('tf-nom').value = t ? t.nom : '';
+  // La petite action de démarrage a son propre champ : on la sort de la
+  // liste des étapes. Son état « faite » est gardé sur le champ, pour ne
+  // pas la décocher si on enregistre sans changer son texte.
+  const mini = t && t.etapes[0] && t.etapes[0].mini ? t.etapes[0] : null;
+  const miniEl = document.getElementById('tf-mini');
+  miniEl.value = mini ? mini.texte : '';
+  miniEl.dataset.texte = mini ? mini.texte : '';
+  miniEl.dataset.faite = mini && mini.faite ? '1' : '';
   const etapesEl = document.getElementById('tf-etapes');
   viderEditeur(etapesEl);
   if (t) {
-    t.etapes.forEach(e => ajouterLigneEtape(etapesEl, e));
+    t.etapes.filter(e => !e.mini).forEach(e => ajouterLigneEtape(etapesEl, e));
   } else {
     ajouterLigneEtape(etapesEl);
     ajouterLigneEtape(etapesEl);
@@ -1122,6 +1252,14 @@ function enregistrerTache() {
     if (e.image) etape.image = e.image;
     return etape;
   });
+  // La petite action de démarrage devient la toute première étape.
+  // Déjà faite, elle le reste tant que son texte ne change pas.
+  const miniEl = document.getElementById('tf-mini');
+  const miniTexte = miniEl.value.trim();
+  if (miniTexte) {
+    const dejaFaite = miniEl.dataset.faite === '1' && miniTexte === miniEl.dataset.texte;
+    etapes.unshift({ texte: miniTexte, faite: dejaFaite, mini: true });
+  }
   if (!nom) { annoncer('Donne un nom à la tâche.'); document.getElementById('tf-nom').focus(); return; }
   if (etapes.length === 0) { annoncer('Ajoute au moins une étape.'); return; }
 
@@ -1189,7 +1327,23 @@ function rendreDetailTache() {
     const span = document.createElement('span');
     remplirEtape(span, e);
     label.appendChild(input);
-    label.appendChild(span);
+    if (e.mini) {
+      // La petite action de démarrage, mise en valeur doucement (fond de la
+      // couleur de la gamme) avec l'étiquette « Pour démarrer » au-dessus.
+      // L'étiquette est à côté du texte, pas dedans : une fois l'étape
+      // cochée, seul le texte est barré.
+      label.classList.add('etape-mini');
+      const colonne = document.createElement('span');
+      colonne.className = 'colonne';
+      const etiquette = document.createElement('small');
+      etiquette.className = 'etiquette-mini';
+      etiquette.textContent = 'Pour démarrer';
+      colonne.appendChild(etiquette);
+      colonne.appendChild(span);
+      label.appendChild(colonne);
+    } else {
+      label.appendChild(span);
+    }
     cont.appendChild(label);
   });
 
@@ -1216,6 +1370,8 @@ function rendreDetailTache() {
     imageEl.classList.toggle('masque', !e.image);
     texteEl.textContent = e.texte;
   }
+  document.getElementById('td-ue-mini').classList.toggle('masque',
+    tdIndexAffiche === null || !t.etapes[tdIndexAffiche].mini);
   const btnFait = document.getElementById('btn-td-ue-fait');
   btnFait.textContent = restantes.length > 1 ? 'Étape suivante ✓' : 'Terminer ✓';
   btnFait.classList.toggle('masque', tdIndexAffiche === null);
@@ -1467,7 +1623,7 @@ function recommencerMinuteur() {
 // tâches du fichier sont AJOUTÉES, sauf celles qui existent déjà (même
 // identifiant) — restaurer deux fois ne crée donc pas de doublon. Seuls les
 // réglages (thème, couleurs, taille du texte, options du minuteur, journée
-// difficile, modes « Une seule chose ») sont remplacés.
+// difficile, modes « Une seule chose », transitions douces) sont remplacés.
 //
 // Version 2 du fichier : les étapes de routine sont des objets
 // { texte, image, minutes } au lieu de simples textes, et les étapes de
@@ -1475,10 +1631,12 @@ function recommencerMinuteur() {
 // toujours : nettoyerRoutine() accepte les deux formes.
 //
 // Version 3 : une étape de routine peut être « essentielle »
-// ({ ..., essentielle: true }), et les réglages comptent deux cases de plus
-// (journeeDifficile, routineUneChose). Ce ne sont que des ajouts
-// facultatifs : un fichier de version 1 ou 2 se relit tel quel (une étape
-// sans « essentielle » ne l'est simplement pas).
+// ({ ..., essentielle: true }) ; la première étape d'une tâche peut être sa
+// petite action de démarrage ({ ..., mini: true }) ; les réglages comptent
+// de nouvelles cases (journeeDifficile, routineUneChose, transitionsDouces,
+// dureeTransition). Ce ne sont que des ajouts facultatifs : un fichier de
+// version 1 ou 2 se relit tel quel (une étape sans « essentielle » ne l'est
+// simplement pas).
 //
 // ATTENTION : les fonctions nettoyer…() ci-dessous ne gardent QUE les
 // informations qu'elles connaissent, au chargement comme à la restauration.
@@ -1572,9 +1730,11 @@ function nettoyerTache(t) {
   if (!t || typeof t !== 'object' || typeof t.nom !== 'string' || !Array.isArray(t.etapes)) return null;
   const etapes = t.etapes
     .filter(e => e && typeof e === 'object' && typeof e.texte === 'string')
-    .map(e => {
+    .map((e, i) => {
       const etape = { texte: e.texte, faite: e.faite === true };
       if (imageValable(e.image)) etape.image = e.image;
+      // La petite action de démarrage est toujours la première étape.
+      if (e.mini === true && i === 0) etape.mini = true;
       return etape;
     });
   if (!t.nom.trim() || etapes.length === 0) return null;
@@ -1592,9 +1752,10 @@ function nettoyerTache(t) {
 function nettoyerReglages(r) {
   const propre = {};
   ['vibrationMinuteur', 'ecranAllumeMinuteur', 'preavisMinuteur', 'tacheUneEtape',
-    'routineUneChose', 'journeeDifficile'].forEach(cle => {
+    'routineUneChose', 'journeeDifficile', 'transitionsDouces'].forEach(cle => {
     if (typeof r[cle] === 'boolean') propre[cle] = r[cle];
   });
+  if (DUREES_TRANSITION.includes(r.dureeTransition)) propre.dureeTransition = r.dureeTransition;
   if (['auto', 'sombre', 'clair'].includes(r.theme)) propre.theme = r.theme;
   const palettes = Array.from(document.querySelectorAll('#choix-palette button')).map(b => b.dataset.paletteVal);
   if (palettes.includes(r.palette)) propre.palette = r.palette;
@@ -1891,7 +2052,16 @@ document.addEventListener('DOMContentLoaded', () => {
     cocherEtapeTache(t, fait, true);
     tdIndexAffiche = prochaineNonFaite(t, fait);
     rendreDetailTache();
-    if (!estTermineeTache(t)) annoncer('Étape cochée. Suivante : ' + t.etapes[tdIndexAffiche].texte);
+    if (estTermineeTache(t)) return;
+    // Transitions douces : la pause s'affiche par-dessus l'étape suivante,
+    // déjà prête derrière.
+    if (reglages.transitionsDouces) {
+      lancerPause('tache-detail', t.etapes[tdIndexAffiche], () => {
+        document.getElementById('btn-td-ue-fait').focus();
+      });
+    } else {
+      annoncer('Étape cochée. Suivante : ' + t.etapes[tdIndexAffiche].texte);
+    }
   });
   document.getElementById('btn-td-ue-autre').addEventListener('click', () => {
     const t = taches.find(x => x.id === tacheOuverteId);
@@ -1994,6 +2164,13 @@ document.addEventListener('DOMContentLoaded', () => {
     c.addEventListener('change', () => changerReglageCase(c.dataset.reglage, c.checked));
   });
   majCasesReglages();
+  document.getElementById('choix-duree-transition').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-secondes]');
+    if (!btn) return;
+    reglages.dureeTransition = Number(btn.dataset.secondes);
+    sauverReglages();
+    majAffichageReglages();
+  });
 
   // En mode « Automatique », si la personne change le thème de son
   // téléphone pendant que Cap est ouvert, on suit sans qu'elle ait à rouvrir l'app.

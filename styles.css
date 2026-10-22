@@ -329,7 +329,9 @@ button:active { background: var(--bord); }
   min-height: 60px;
 }
 
-.bouton-rangee { display: flex; gap: 12px; }
+/* flex-wrap : si les boutons ne tiennent pas côte à côte (petit écran,
+   grand texte), le dernier passe à la ligne au lieu de déborder de l'écran. */
+.bouton-rangee { display: flex; flex-wrap: wrap; gap: 12px; }
 .bouton-rangee > * { flex: 1; }
 
 /* Un bouton armé attend un second appui avant une action qu'on ne peut pas
@@ -573,6 +575,52 @@ details.apercu li.faite { text-decoration: line-through; }
    en haut de l'écran. */
 .bouton-mode { margin-bottom: 18px; }
 
+/* Transitions douces : pendant la pause, l'écran ne garde que sa barre du
+   haut (la flèche ← reste disponible) et la pause elle-même. */
+.en-pause > :not(.barre-haut):not(.pause-douce) { display: none !important; }
+
+/* La pause est un seul grand bouton calme : un toucher n'importe où la
+   termine. Elle apparaît par un fondu lent, et sa barre se vide d'une
+   seule glissade régulière (réglée par app.js sur la durée de la pause). */
+.pause-douce {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-height: 60vh;
+  padding: 30px 20px;
+  background: var(--surface);
+  border-radius: 24px;
+  animation: apparition-douce 600ms ease;
+}
+.pause-message { display: block; font-size: 1.35rem; font-weight: 600; line-height: 1.4; }
+.pause-ensuite { display: block; color: var(--texte-doux); overflow-wrap: anywhere; }
+.pause-jauge {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--bord);
+  overflow: hidden;
+}
+.pause-barre { display: block; height: 100%; width: 100%; background: var(--accent); }
+.pause-aide { display: block; font-size: 0.85rem; color: var(--texte-doux); }
+
+@keyframes apparition-douce {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Mouvements réduits : la barre ne pourrait plus glisser (elle sauterait
+   d'un coup à vide) ; on la retire, le texte dit combien de temps dure la
+   pause. */
+@media (prefers-reduced-motion: reduce) {
+  .pause-jauge { display: none; }
+}
+
 /* Tâche en mode « Une seule chose ». */
 .une-etape { text-align: center; padding: 10px 0 6px; }
 .une-etape .etape-texte { margin-bottom: 22px; }
@@ -597,6 +645,9 @@ details.apercu li.faite { text-decoration: line-through; }
   padding: 10px 0;
   border-bottom: 1px solid var(--bord);
   cursor: pointer;
+  /* Une étape à faire en couleur de texte normale ; une fois cochée, elle
+     passe en gris et barrée (règle plus bas) : la différence se voit. */
+  color: var(--texte);
 }
 .etape-cochable:last-of-type { border-bottom: none; }
 .etape-cochable input {
@@ -607,10 +658,32 @@ details.apercu li.faite { text-decoration: line-through; }
   margin: 0;
 }
 .etape-cochable span { flex: 1; font-size: 1rem; }
-.etape-cochable:has(input:checked) span {
+/* Une fois cochée, l'étape est barrée — mais pas l'étiquette « Pour
+   démarrer », rangée à côté du texte dans la « colonne ». */
+.etape-cochable:has(input:checked) span:not(.colonne) {
   color: var(--texte-doux);
   text-decoration: line-through;
 }
+
+/* Petite action de démarrage (tâches) : mise en valeur doucement, avec le
+   fond de la couleur de la gamme et l'étiquette « Pour démarrer ». Placé
+   après les règles ci-dessus pour garder sa bordure complète. */
+.etape-cochable.etape-mini {
+  background: var(--accent-fond);
+  border: 1px solid var(--bord);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--bord));
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.etape-cochable .colonne { flex: 1; }
+.etiquette-mini {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texte-doux);
+}
+.une-etape .etiquette-mini { margin-bottom: 6px; }
 
 .ajout-etape-rapide {
   display: flex;

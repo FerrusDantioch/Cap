@@ -140,9 +140,9 @@
     <h3>Étapes, dans l'ordre</h3>
     <p><small>Pour chaque étape, tu peux ajouter une image et une durée
        prévue. Les deux sont facultatives.</small></p>
-    <p><small>Marque aussi comme « essentielles » les quelques étapes à
-       garder les jours difficiles : quand l'interrupteur « Journée
-       difficile » de l'accueil est allumé, la routine ne montre qu'elles.</small></p>
+    <p><small>Marque aussi comme «&nbsp;essentielles&nbsp;» les quelques étapes à
+       garder les jours difficiles : quand l'interrupteur
+       «&nbsp;Journée difficile&nbsp;» de l'accueil est allumé, la routine ne montre qu'elles.</small></p>
     <div id="rf-etapes" data-duree="oui" data-essentielle="oui"></div>
 
     <!-- Combien d'étapes sont essentielles : un repère, jamais un blocage. -->
@@ -253,6 +253,15 @@
     <label for="tf-nom">Nom de la tâche</label>
     <input type="text" id="tf-nom" placeholder="Par exemple : Faire les papiers">
 
+    <!-- Mini-démarrage : un geste minuscule pour se lancer. Rangé comme la
+         toute première étape de la tâche (avec « mini: true »), il
+         s'affiche toujours en premier, mis en valeur doucement. -->
+    <label for="tf-mini">Première toute petite action (facultatif)</label>
+    <input type="text" id="tf-mini" placeholder="Par exemple : Sortir le carnet"
+           aria-describedby="tf-mini-aide">
+    <p id="tf-mini-aide"><small>Un geste minuscule, presque trop facile,
+       juste pour démarrer. Il s'affichera en premier.</small></p>
+
     <h3>Petites étapes</h3>
     <p><small>Tu peux ajouter une image à chaque étape. C'est facultatif.</small></p>
     <div id="tf-etapes"></div>
@@ -287,6 +296,7 @@
     <!-- Mode « Une seule chose » : une seule étape non faite à l'écran, en
          grand, sans la liste, la progression ni les autres boutons. -->
     <div id="td-une-etape" class="une-etape masque">
+      <p class="etiquette-mini masque" id="td-ue-mini">Pour démarrer</p>
       <p class="etape-image picto masque" id="td-ue-image" aria-hidden="true"></p>
       <p class="etape-texte" id="td-ue-texte"></p>
       <button type="button" id="btn-td-ue-fait" class="bouton-valider">Étape suivante ✓</button>
@@ -459,19 +469,37 @@
       <input type="checkbox" role="switch" id="reglage-journee-difficile" data-reglage="journeeDifficile">
     </label>
     <p><small>Les routines ne montrent que leurs étapes marquées
-       « essentielles ». Les routines elles-mêmes ne changent pas. Le même
+       «&nbsp;essentielles&nbsp;». Les routines elles-mêmes ne changent pas. Le même
        interrupteur se trouve sur l'accueil.</small></p>
 
     <label class="interrupteur" for="reglage-routine-une-chose">
-      <span>Routines : mode « Une seule chose »</span>
+      <span>Routines : mode «&nbsp;Une seule chose&nbsp;»</span>
       <input type="checkbox" id="reglage-routine-une-chose" data-reglage="routineUneChose">
     </label>
     <label class="interrupteur" for="reglage-tache-une-chose">
-      <span>Tâches : mode « Une seule chose »</span>
+      <span>Tâches : mode «&nbsp;Une seule chose&nbsp;»</span>
       <input type="checkbox" id="reglage-tache-une-chose" data-reglage="tacheUneEtape">
     </label>
-    <p><small>Seule l'étape en cours s'affiche, en grand. Le bouton « Voir
-       tout », en haut de l'écran, ramène la vue complète.</small></p>
+    <p><small>Seule l'étape en cours s'affiche, en grand. Le bouton
+       «&nbsp;Voir tout&nbsp;», en haut de l'écran, ramène la vue complète.</small></p>
+
+    <label class="interrupteur" for="reglage-transitions">
+      <span>Transitions douces</span>
+      <input type="checkbox" id="reglage-transitions" data-reglage="transitionsDouces">
+    </label>
+    <p><small>Entre deux étapes d'une routine (ou d'une tâche en mode
+       «&nbsp;Une seule chose&nbsp;»), une courte pause avec un message calme et le nom de
+       l'étape qui vient. Un toucher la termine tout de suite.</small></p>
+    <!-- Masqué quand les transitions douces sont éteintes. -->
+    <div id="zone-duree-transition">
+      <p style="margin-bottom:8px"><small>Durée de la pause :</small></p>
+      <div class="choix" id="choix-duree-transition" role="group" aria-label="Durée de la pause">
+        <button type="button" data-secondes="5" aria-label="5 secondes">5 s</button>
+        <button type="button" data-secondes="10" aria-label="10 secondes">10 s</button>
+        <button type="button" data-secondes="20" aria-label="20 secondes">20 s</button>
+        <button type="button" data-secondes="30" aria-label="30 secondes">30 s</button>
+      </div>
+    </div>
 
     <h3 style="margin-top:24px">Sauvegarde de mes données</h3>
     <p><small>Tes routines, tes tâches et tes réglages sont gardés dans le

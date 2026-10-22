@@ -26,6 +26,19 @@ l'accueil.
   sans jamais modifier la routine enregistrée. Une routine sans étape
   essentielle reste complète. Allumé en cours de route, l'étape à l'écran
   reste affichée (`etapesMontrees()`). Ne s'éteint jamais tout seul.
+- **Mini-démarrage** (tâches) : champ facultatif « Première toute petite
+  action », rangé comme première étape de la tâche avec `mini: true`
+  (jamais ailleurs qu'en première position). Affiché en premier, sur fond
+  doux, avec l'étiquette « Pour démarrer » (aussi sur l'accueil).
+- **Transitions douces** (éteintes par défaut) : entre deux étapes d'une
+  routine, ou d'une tâche en mode « Une seule chose », une pause de 5 à
+  30 s (`lancerPause()` / `finirPause()`), message fixe, nom de l'étape qui
+  vient, barre qui se vide lentement. Un toucher la termine (sauf pendant
+  les 0,6 premières secondes, contre les doubles appuis). Elle s'affiche
+  sous la barre du haut : `←` reste disponible et annule la pause.
+- **Modèles de routines** : Le matin, Avant de sortir, Le soir, Ménage,
+  Courses, chacun avec 3 étapes essentielles proposées. Un modèle ouvre le
+  formulaire pré-rempli ; rien n'est enregistré avant « Enregistrer ».
 
 ## Données (localStorage)
 
@@ -34,13 +47,14 @@ l'accueil.
   Les anciennes versions rangeaient les étapes en simple texte :
   `nettoyerRoutine()` accepte toujours les deux formes, au chargement comme
   à la restauration. Ne jamais supprimer cette compatibilité.
-- `cap_taches` : `[{ id, nom, etapes: [{ texte, faite, image? }],
+- `cap_taches` : `[{ id, nom, etapes: [{ texte, faite, image?, mini? }],
   termineeLe, epinglee? }]`. Une seule tâche peut être épinglée
-  (`unSeulEpinglage()`).
+  (`unSeulEpinglage()`). `mini` n'est gardé que sur la première étape.
 - `cap_routine_en_cours` : `{ id, index, passees }`, la routine commencée.
   Remise à zéro si la routine est modifiée ou supprimée.
 - `cap_reglages` : thème, gamme, `echelle` (taille du texte), options du
-  minuteur, `tacheUneEtape`, `routineUneChose`, `journeeDifficile`.
+  minuteur, `tacheUneEtape`, `routineUneChose`, `journeeDifficile`,
+  `transitionsDouces`, `dureeTransition` (5, 10, 20 ou 30 secondes).
 - Sauvegarde : fichier version 3 ; les fichiers version 1 et 2 se
   restaurent toujours.
 - ⚠️ Les fonctions `nettoyer…()` d'`app.js` ne gardent **que** les champs
@@ -119,7 +133,7 @@ Après toute modification d'un fichier **mis en cache** (`index.html`,
 haut de `sw.js` :
 
 ```js
-const CACHE = 'cap-v11';   // → v12
+const CACHE = 'cap-v12';   // → v13
 ```
 
 Sans ce changement, le navigateur ne retélécharge rien. En cas d'**ajout de
