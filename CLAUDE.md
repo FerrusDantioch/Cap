@@ -13,11 +13,24 @@ viennent de suggestions de personnes autistes : savoir ce qui vient
 (« Ensuite : … », liste des étapes repliable), reprendre une routine
 interrompue, passer une étape sans culpabilité, images d'étapes, durée
 prévue par étape, préavis visuel du minuteur, tâche du jour épinglée sur
-l'accueil, mode « une étape à la fois ».
+l'accueil.
+
+- **Mode « Une seule chose »** (routines et tâches) : seule l'étape en
+  cours, en grand, avec « Étape suivante » ; le bouton « Une seule chose » /
+  « Voir tout » reste toujours en haut, au même endroit. Les éléments marqués
+  `hors-une-chose` sont cachés quand l'écran porte la classe `une-chose`.
+  Choix mémorisé séparément : `routineUneChose` et `tacheUneEtape`.
+- **Journée difficile** : interrupteur sur l'accueil (juste au-dessus du lien
+  Refuge) et dans Réglages, gardés d'accord par `data-reglage`. Les routines
+  ne montrent alors que leurs étapes `essentielle` (voir `etapesDuJour()`),
+  sans jamais modifier la routine enregistrée. Une routine sans étape
+  essentielle reste complète. Allumé en cours de route, l'étape à l'écran
+  reste affichée (`etapesMontrees()`). Ne s'éteint jamais tout seul.
 
 ## Données (localStorage)
 
-- `cap_routines` : `[{ id, nom, etapes: [{ texte, image?, minutes? }] }]`.
+- `cap_routines` : `[{ id, nom, etapes: [{ texte, image?, minutes?,
+  essentielle? }] }]`.
   Les anciennes versions rangeaient les étapes en simple texte :
   `nettoyerRoutine()` accepte toujours les deux formes, au chargement comme
   à la restauration. Ne jamais supprimer cette compatibilité.
@@ -27,8 +40,13 @@ l'accueil, mode « une étape à la fois ».
 - `cap_routine_en_cours` : `{ id, index, passees }`, la routine commencée.
   Remise à zéro si la routine est modifiée ou supprimée.
 - `cap_reglages` : thème, gamme, `echelle` (taille du texte), options du
-  minuteur, `tacheUneEtape`.
-- Sauvegarde : fichier version 2 ; un fichier version 1 se restaure toujours.
+  minuteur, `tacheUneEtape`, `routineUneChose`, `journeeDifficile`.
+- Sauvegarde : fichier version 3 ; les fichiers version 1 et 2 se
+  restaurent toujours.
+- ⚠️ Les fonctions `nettoyer…()` d'`app.js` ne gardent **que** les champs
+  qu'elles connaissent, au chargement comme à la restauration (y compris la
+  liste blanche des réglages dans `nettoyerReglages()`). Tout nouveau champ
+  doit y être ajouté, sinon il disparaît au rechargement suivant.
 
 ## Contraintes de conception à préserver
 
@@ -54,7 +72,9 @@ l'accueil, mode « une étape à la fois ».
   le `<head>` de `index.html` qui évite un flash de mauvaises couleurs).
   Toute nouvelle gamme ajoutée doit rester dans la même plage de
   saturation et de contraste que les existantes — jamais un accent saturé
-  ou un fond franc.
+  ou un fond franc. Le texte secondaire `--texte-doux` garde un contraste
+  ≥ 4,5:1 sur `--bg`, `--surface`, `--surface-2` et `--accent-fond`
+  (norme WCAG AA), en clair comme en sombre.
 - **Animations lentes et régulières**, jamais brusques ;
   `prefers-reduced-motion` pleinement respecté.
 - **Zones tactiles ≥ 60 px.**
@@ -99,7 +119,7 @@ Après toute modification d'un fichier **mis en cache** (`index.html`,
 haut de `sw.js` :
 
 ```js
-const CACHE = 'cap-v8';   // → v9
+const CACHE = 'cap-v11';   // → v12
 ```
 
 Sans ce changement, le navigateur ne retélécharge rien. En cas d'**ajout de

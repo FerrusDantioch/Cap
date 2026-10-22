@@ -44,7 +44,7 @@
        ======================================================== -->
   <section id="vue-accueil" class="vue active">
     <button type="button" id="btn-accueil-reglages" class="bouton-reglages-accueil" aria-label="Réglages">⚙</button>
-    <h1 style="text-align:center; margin-bottom:26px">Cap</h1>
+    <h1 class="titre-accueil">Cap</h1>
 
     <!-- Ce qui est en cours (routine commencée, minuteur qui tourne) :
          rempli par app.js, vide s'il n'y a rien à reprendre. -->
@@ -77,6 +77,18 @@
       Minuteur
       <span class="sous">Un temps qui se voit, pas seulement des chiffres</span>
     </button>
+
+    <!-- Journée difficile : un seul toucher pour alléger toutes les
+         routines (seules leurs étapes « essentielles » s'affichent). Les
+         routines elles-mêmes ne sont jamais modifiées. Le même interrupteur
+         existe dans Réglages : les deux restent toujours d'accord. -->
+    <label class="interrupteur carte-interrupteur" for="accueil-journee-difficile">
+      <span>
+        Journée difficile
+        <span class="sous">Les routines ne montrent que l'essentiel</span>
+      </span>
+      <input type="checkbox" role="switch" id="accueil-journee-difficile" data-reglage="journeeDifficile">
+    </label>
 
     <!-- Pont discret vers l'application sœur, pour les moments où tout
          déborde. Nouvel onglet : Cap reste ouvert derrière. -->
@@ -128,7 +140,13 @@
     <h3>Étapes, dans l'ordre</h3>
     <p><small>Pour chaque étape, tu peux ajouter une image et une durée
        prévue. Les deux sont facultatives.</small></p>
-    <div id="rf-etapes" data-duree="oui"></div>
+    <p><small>Marque aussi comme « essentielles » les quelques étapes à
+       garder les jours difficiles : quand l'interrupteur « Journée
+       difficile » de l'accueil est allumé, la routine ne montre qu'elles.</small></p>
+    <div id="rf-etapes" data-duree="oui" data-essentielle="oui"></div>
+
+    <!-- Combien d'étapes sont essentielles : un repère, jamais un blocage. -->
+    <p id="rf-essentielles" aria-live="polite"><small></small></p>
 
     <button type="button" id="btn-rf-ajouter-etape" class="bouton-secondaire" style="margin-bottom:18px">
       + Ajouter une étape
@@ -150,8 +168,15 @@
       <h1 id="titre-routine-lancer">Routine</h1>
     </div>
 
+    <!-- Mode « Une seule chose » : seule l'étape en cours reste à l'écran,
+         en grand. Ce bouton ne bouge jamais de place ; son texte dit ce
+         qu'il fera (« Une seule chose » ou « Voir tout »). Les éléments
+         marqués « hors-une-chose » sont cachés dans ce mode. -->
+    <button type="button" id="btn-rl-mode" class="bouton-secondaire bouton-mode">Une seule chose</button>
+
     <div class="scene-routine">
-      <p class="compteur" id="rl-compteur">Étape 1 / 1</p>
+      <p class="compteur hors-une-chose" id="rl-compteur">Étape 1 / 1</p>
+      <p class="note-difficile hors-une-chose masque" id="rl-note-difficile"><small></small></p>
       <p class="etape-image picto masque" id="rl-etape-image" aria-hidden="true"></p>
       <p class="etape-texte" id="rl-etape-texte"></p>
 
@@ -161,23 +186,23 @@
         <p id="rl-temps-etape"></p>
       </div>
 
-      <p class="ensuite" id="rl-ensuite"></p>
+      <p class="ensuite hors-une-chose" id="rl-ensuite"></p>
     </div>
 
     <button type="button" id="btn-rl-valider" class="bouton-valider">C'est fait ✓</button>
 
-    <div class="bouton-rangee" style="margin-bottom:14px">
+    <div class="bouton-rangee hors-une-chose" style="margin-bottom:14px">
       <button type="button" id="btn-rl-precedente" class="bouton-secondaire">← Étape précédente</button>
       <button type="button" id="btn-rl-passer" class="bouton-secondaire">Passer cette étape</button>
     </div>
 
-    <details class="apercu" id="rl-apercu">
-      <summary>Voir toute la routine</summary>
+    <details class="apercu hors-une-chose" id="rl-apercu">
+      <summary id="rl-apercu-titre">Voir toute la routine</summary>
       <ol id="rl-liste"></ol>
     </details>
 
-    <button type="button" id="btn-rl-arreter" class="bouton-secondaire">Arrêter la routine</button>
-    <p style="margin-top:12px"><small>Si tu quittes cet écran, ta progression
+    <button type="button" id="btn-rl-arreter" class="bouton-secondaire hors-une-chose">Arrêter la routine</button>
+    <p class="hors-une-chose" style="margin-top:12px"><small>Si tu quittes cet écran, ta progression
        est gardée : tu pourras reprendre depuis l'accueil.</small></p>
   </section>
 
@@ -188,6 +213,8 @@
     <div style="text-align:center; padding:60px 10px">
       <h1>Routine terminée</h1>
       <p style="color:var(--texte-doux)">Bien joué. Elle est prête à être relancée la prochaine fois.</p>
+      <p id="rl-fin-difficile" class="masque"><small>Version journée difficile :
+         seulement les étapes essentielles.</small></p>
       <p id="rl-fin-passees" class="masque"><small></small></p>
       <button type="button" data-accueil class="bouton-doux" style="margin-top:20px">Retour à l'accueil</button>
     </div>
@@ -249,19 +276,21 @@
       <h1 id="titre-tache-detail">Tâche</h1>
     </div>
 
-    <p class="meta" id="td-progres"></p>
-    <div class="barre-progres" style="margin-bottom:20px"><div id="td-barre" style="width:0%"></div></div>
+    <p class="meta hors-une-chose" id="td-progres"></p>
+    <div class="barre-progres hors-une-chose" style="margin-bottom:20px"><div id="td-barre" style="width:0%"></div></div>
 
-    <button type="button" id="btn-td-mode" class="bouton-secondaire" aria-pressed="false" style="margin-bottom:18px">
-      Voir une étape à la fois
+    <!-- Même bouton que pour les routines : « Une seule chose » ou « Voir tout ». -->
+    <button type="button" id="btn-td-mode" class="bouton-secondaire bouton-mode">
+      Une seule chose
     </button>
 
-    <!-- Mode « une étape à la fois » : une seule étape non faite à l'écran. -->
+    <!-- Mode « Une seule chose » : une seule étape non faite à l'écran, en
+         grand, sans la liste, la progression ni les autres boutons. -->
     <div id="td-une-etape" class="une-etape masque">
       <p class="etape-image picto masque" id="td-ue-image" aria-hidden="true"></p>
       <p class="etape-texte" id="td-ue-texte"></p>
-      <button type="button" id="btn-td-ue-fait" class="bouton-valider">C'est fait ✓</button>
-      <button type="button" id="btn-td-ue-autre" class="bouton-secondaire">Une autre étape</button>
+      <button type="button" id="btn-td-ue-fait" class="bouton-valider">Étape suivante ✓</button>
+      <button type="button" id="btn-td-ue-autre" class="bouton-secondaire">Montrer une autre étape</button>
     </div>
 
     <div id="td-tout">
@@ -273,13 +302,13 @@
       </form>
     </div>
 
-    <button type="button" id="btn-td-epingler" aria-pressed="false" style="margin-top:24px">
+    <button type="button" id="btn-td-epingler" class="hors-une-chose" aria-pressed="false" style="margin-top:24px">
       Épingler sur l'accueil
     </button>
-    <button type="button" id="btn-td-modifier" style="margin-top:12px">
+    <button type="button" id="btn-td-modifier" class="hors-une-chose" style="margin-top:12px">
       Modifier la tâche
     </button>
-    <button type="button" id="btn-td-supprimer" class="bouton-secondaire" style="margin-top:12px">
+    <button type="button" id="btn-td-supprimer" class="bouton-secondaire hors-une-chose" style="margin-top:12px">
       Supprimer cette tâche
     </button>
   </section>
@@ -362,7 +391,8 @@
   </section>
 
   <!-- ========================================================
-       RÉGLAGES — thème, couleurs, taille du texte, sauvegarde
+       RÉGLAGES — thème, couleurs, taille du texte, routines et tâches,
+       sauvegarde
        ======================================================== -->
   <section id="vue-reglages" class="vue" hidden>
     <div class="barre-haut">
@@ -419,6 +449,29 @@
       <button type="button" data-echelle="1.15">Grand</button>
       <button type="button" data-echelle="1.35">Très grand</button>
     </div>
+
+    <!-- Ces cases portent data-reglage : app.js les garde d'accord avec les
+         mêmes réglages ailleurs (l'interrupteur de l'accueil, les boutons
+         « Une seule chose » / « Voir tout »). -->
+    <h3 style="margin-top:24px">Routines et tâches</h3>
+    <label class="interrupteur" for="reglage-journee-difficile">
+      <span>Journée difficile</span>
+      <input type="checkbox" role="switch" id="reglage-journee-difficile" data-reglage="journeeDifficile">
+    </label>
+    <p><small>Les routines ne montrent que leurs étapes marquées
+       « essentielles ». Les routines elles-mêmes ne changent pas. Le même
+       interrupteur se trouve sur l'accueil.</small></p>
+
+    <label class="interrupteur" for="reglage-routine-une-chose">
+      <span>Routines : mode « Une seule chose »</span>
+      <input type="checkbox" id="reglage-routine-une-chose" data-reglage="routineUneChose">
+    </label>
+    <label class="interrupteur" for="reglage-tache-une-chose">
+      <span>Tâches : mode « Une seule chose »</span>
+      <input type="checkbox" id="reglage-tache-une-chose" data-reglage="tacheUneEtape">
+    </label>
+    <p><small>Seule l'étape en cours s'affiche, en grand. Le bouton « Voir
+       tout », en haut de l'écran, ramène la vue complète.</small></p>
 
     <h3 style="margin-top:24px">Sauvegarde de mes données</h3>
     <p><small>Tes routines, tes tâches et tes réglages sont gardés dans le

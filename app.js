@@ -52,7 +52,14 @@ function chargerReglages() {
     theme: 'auto',
     palette: 'bleu',
     echelle: 1,
-    tacheUneEtape: false
+    // Mode « Une seule chose » (seule l'étape en cours, en grand), mémorisé
+    // séparément pour les tâches et pour les routines. Le nom
+    // « tacheUneEtape » vient d'une ancienne version : on le garde tel quel
+    // pour que le choix déjà fait par la personne soit conservé.
+    tacheUneEtape: false,
+    routineUneChose: false,
+    // Journée difficile : les routines ne montrent que leurs étapes essentielles.
+    journeeDifficile: false
   };
   try { return Object.assign(defaut, JSON.parse(localStorage.getItem(CLE_REGLAGES)) || {}); }
   catch (e) { return defaut; }
@@ -96,16 +103,18 @@ function nomPicto(image) {
 // déjà, en soi, un obstacle pour démarrer). Choisir un modèle ouvre le
 // formulaire déjà rempli : rien n'est enregistré tant que la personne
 // n'appuie pas sur « Enregistrer », et elle peut tout changer avant.
+// Chaque modèle propose trois étapes « essentielles » (celles qui restent
+// les jours difficiles) : une suggestion, modifiable comme le reste.
 const MODELES_ROUTINES = [
   {
     nom: 'Le matin',
     etapes: [
-      { image: '⏰', texte: 'Se lever' },
+      { image: '⏰', texte: 'Se lever', essentielle: true },
       { image: '🚽', texte: 'Aller aux toilettes' },
-      { image: '💧', texte: 'Boire un verre d’eau' },
+      { image: '💧', texte: 'Boire un verre d’eau', essentielle: true },
       { image: '🚿', texte: 'Se doucher', minutes: 10 },
       { image: '👕', texte: 'S’habiller' },
-      { image: '🥣', texte: 'Prendre le petit-déjeuner', minutes: 15 },
+      { image: '🥣', texte: 'Prendre le petit-déjeuner', minutes: 15, essentielle: true },
       { image: '🪥', texte: 'Se brosser les dents', minutes: 2 }
     ]
   },
@@ -114,24 +123,24 @@ const MODELES_ROUTINES = [
     etapes: [
       { image: '🧥', texte: 'Mettre une veste adaptée au temps qu’il fait' },
       { image: '👟', texte: 'Mettre les chaussures' },
-      { image: '🔑', texte: 'Prendre les clés' },
+      { image: '🔑', texte: 'Prendre les clés', essentielle: true },
       { image: '👛', texte: 'Prendre le porte-monnaie ou la carte' },
-      { image: '📱', texte: 'Prendre le téléphone' },
+      { image: '📱', texte: 'Prendre le téléphone', essentielle: true },
       { image: '🎧', texte: 'Prendre le casque ou les bouchons d’oreilles' },
       { image: '💡', texte: 'Éteindre les lumières' },
-      { image: '🚪', texte: 'Fermer la porte à clé' }
+      { image: '🚪', texte: 'Fermer la porte à clé', essentielle: true }
     ]
   },
   {
     nom: 'Le soir',
     etapes: [
       { image: '🎒', texte: 'Préparer les affaires de demain', minutes: 10 },
-      { image: '📱', texte: 'Mettre le téléphone à charger' },
-      { image: '🪥', texte: 'Se brosser les dents', minutes: 2 },
+      { image: '📱', texte: 'Mettre le téléphone à charger', essentielle: true },
+      { image: '🪥', texte: 'Se brosser les dents', minutes: 2, essentielle: true },
       { image: '👕', texte: 'Mettre le pyjama' },
       { image: '💡', texte: 'Baisser la lumière' },
       { image: '🎧', texte: 'Un moment calme', minutes: 15 },
-      { image: '💤', texte: 'Aller au lit' }
+      { image: '💤', texte: 'Aller au lit', essentielle: true }
     ]
   }
 ];
@@ -299,6 +308,30 @@ function majAffichageReglages() {
   document.querySelectorAll('#choix-taille button').forEach(b => {
     b.setAttribute('aria-pressed', String(Number(b.dataset.echelle) === Number(reglages.echelle)));
   });
+  majCasesReglages();
+}
+
+// Les cases à cocher qui portent data-reglage="<nom>" montrent directement
+// reglages[<nom>]. Un même réglage peut avoir deux cases (l'interrupteur
+// « Journée difficile » est sur l'accueil ET dans Réglages) : elles sont
+// toujours remises d'accord ensemble.
+function majCasesReglages() {
+  document.querySelectorAll('input[data-reglage]').forEach(c => {
+    c.checked = !!reglages[c.dataset.reglage];
+  });
+}
+
+function changerReglageCase(nom, valeur) {
+  reglages[nom] = valeur;
+  sauverReglages();
+  majCasesReglages();
+  if (nom === 'journeeDifficile') {
+    annoncer(valeur
+      ? 'Journée difficile : les routines ne montrent que l’essentiel.'
+      : 'Journée difficile éteinte : les routines sont complètes.');
+    // « Reprendre … étape 2 sur 3 » change avec le nombre d'étapes montrées.
+    if (vueCourante === 'accueil') majAccueil();
+  }
 }
 
 /* ---------- 6. Navigation entre les écrans ---------- */
@@ -349,9 +382,10 @@ function majAccueil() {
 
   if (routineEnCours) {
     const r = routineEnCours.routine;
+    const p = positionRoutine(routineEnCours);
     zone.appendChild(boutonEnCours(
       'Reprendre « ' + r.nom + ' »',
-      'Étape ' + (routineEnCours.index + 1) + ' sur ' + r.etapes.length,
+      'Étape ' + p.numero + ' sur ' + p.total,
       () => lancerRoutine(r.id)
     ));
   }
@@ -414,9 +448,11 @@ function majTacheDuJour() {
 // Chaque étape du formulaire est une petite carte :
 //   [image] [texte de l'étape .................] [✕]
 //   [durée prévue (routines seulement)]  [↑] [↓]
-// L'image choisie, et pour une tâche l'état « faite », sont rangés sur la
-// carte elle-même (data-image, data-faite) : ils suivent l'étape quand on
-// la monte ou la descend.
+//   [☆ Essentielle (routines seulement) ........]
+// L'image choisie, l'état « essentielle » et, pour une tâche, l'état
+// « faite » sont rangés sur la carte elle-même (data-image,
+// data-essentielle, data-faite) : ils suivent l'étape quand on la monte ou
+// la descend.
 
 const DUREES_ETAPE = [1, 2, 3, 5, 10, 15, 20, 30, 45, 60];
 
@@ -440,14 +476,38 @@ function majBoutonImage(ligne) {
     : 'Choisir une image pour cette étape');
 }
 
+// Le bouton « Essentielle » garde toujours le même nom pour les lecteurs
+// d'écran ; c'est aria-pressed qui dit s'il est enfoncé. À l'écran,
+// l'étoile se remplit (★) et le bouton prend la couleur douce de la gamme.
+function majBoutonEssentielle(ligne) {
+  const b = ligne.querySelector('button[data-dir="essentielle"]');
+  if (!b) return;
+  const oui = ligne.dataset.essentielle === '1';
+  b.setAttribute('aria-pressed', String(oui));
+  b.textContent = (oui ? '★' : '☆') + ' Essentielle';
+}
+
+// « 2 étapes essentielles choisies » sous la liste du formulaire de routine.
+// Trois est un repère, pas une règle : rien n'empêche d'en choisir plus.
+function majCompteEssentielles() {
+  const n = document.querySelectorAll('#rf-etapes .ligne-etape[data-essentielle="1"]').length;
+  let texte;
+  if (n === 0) texte = 'Aucune étape essentielle pour l’instant. Pour une journée difficile, environ 3 suffisent souvent.';
+  else if (n < 3) texte = pluriel(n, 'étape essentielle choisie', 'étapes essentielles choisies') + '. On en conseille environ 3, mais c’est toi qui décides.';
+  else texte = pluriel(n, 'étape essentielle choisie', 'étapes essentielles choisies') + '.';
+  document.querySelector('#rf-essentielles small').textContent = texte;
+}
+
 function ajouterLigneEtape(conteneur, etape) {
   etape = etape || {};
   const avecDuree = conteneur.dataset.duree === 'oui';
+  const avecEssentielle = conteneur.dataset.essentielle === 'oui';
 
   const ligne = document.createElement('div');
   ligne.className = 'ligne-etape';
   ligne.dataset.image = etape.image || '';
   if (etape.faite) ligne.dataset.faite = '1';
+  if (etape.essentielle) ligne.dataset.essentielle = '1';
 
   const haut = document.createElement('div');
   haut.className = 'ligne-haut';
@@ -486,6 +546,15 @@ function ajouterLigneEtape(conteneur, etape) {
   bas.appendChild(creerBouton('↑', 'haut', 'Monter cette étape'));
   bas.appendChild(creerBouton('↓', 'bas', 'Descendre cette étape'));
   ligne.appendChild(bas);
+
+  // Une rangée à part, sur toute la largeur : à côté de la durée et des
+  // flèches, il n'y aurait plus assez de place sur un petit téléphone.
+  if (avecEssentielle) {
+    const btnEss = creerBouton('', 'essentielle', 'Étape essentielle, gardée les jours difficiles');
+    btnEss.className = 'bouton-essentielle';
+    ligne.appendChild(btnEss);
+    majBoutonEssentielle(ligne);
+  }
 
   majBoutonImage(ligne);
   conteneur.appendChild(ligne);
@@ -560,7 +629,10 @@ function configurerEditeurEtapes(conteneur) {
     const dir = bouton.dataset.dir;
     if (dir === 'image') { ouvrirChoixImage(ligne); return; }
     fermerChoixImage();
-    if (dir === 'suppr') {
+    if (dir === 'essentielle') {
+      ligne.dataset.essentielle = ligne.dataset.essentielle === '1' ? '' : '1';
+      majBoutonEssentielle(ligne);
+    } else if (dir === 'suppr') {
       ligne.remove();
     } else if (dir === 'haut' && ligne.previousElementSibling) {
       conteneur.insertBefore(ligne, ligne.previousElementSibling);
@@ -569,6 +641,7 @@ function configurerEditeurEtapes(conteneur) {
       conteneur.insertBefore(ligne.nextElementSibling, ligne);
       bouton.focus();
     }
+    if (conteneur.dataset.essentielle === 'oui') majCompteEssentielles();
   });
 }
 
@@ -583,6 +656,7 @@ function lireEtapes(conteneur) {
     const select = ligne.querySelector('select');
     if (select && select.value) etape.minutes = Number(select.value);
     if (ligne.dataset.faite === '1') etape.faite = true;
+    if (ligne.dataset.essentielle === '1') etape.essentielle = true;
     return etape;
   }).filter(Boolean);
 }
@@ -596,7 +670,12 @@ function viderEditeur(conteneur) {
 
 function listeEtapesHtml(etapes) {
   return '<ol>' + etapes.map(e => '<li>' + etapeHtml(e) +
-    (e.minutes ? ' <span class="duree">· ' + e.minutes + ' min</span>' : '') + '</li>').join('') + '</ol>';
+    (e.minutes ? ' <span class="duree">· ' + e.minutes + ' min</span>' : '') +
+    (e.essentielle ? ' <span class="duree">· ★ essentielle</span>' : '') + '</li>').join('') + '</ol>';
+}
+
+function nombreEssentielles(routine) {
+  return routine.etapes.filter(e => e.essentielle).length;
 }
 
 function rendreListeRoutines() {
@@ -607,8 +686,10 @@ function rendreListeRoutines() {
   }
   cont.innerHTML = routines.map(r => {
     const enCours = routineEnCours && routineEnCours.routine.id === r.id;
+    const nbEss = nombreEssentielles(r);
     const meta = pluriel(r.etapes.length, 'étape', 'étapes') +
-      (enCours ? ' · commencée, étape ' + (routineEnCours.index + 1) + ' en cours' : '');
+      (nbEss ? ' · dont ' + pluriel(nbEss, 'essentielle', 'essentielles') : '') +
+      (enCours ? ' · commencée, étape ' + positionRoutine(routineEnCours).numero + ' en cours' : '');
     return `
       <div class="fiche">
         <div class="nom">${echapper(r.nom)}</div>
@@ -665,6 +746,7 @@ function ouvrirFormulaireRoutine(id, modele) {
     ajouterLigneEtape(etapesEl);
     ajouterLigneEtape(etapesEl);
   }
+  majCompteEssentielles();
   afficherVue('routine-form');
 }
 
@@ -674,6 +756,7 @@ function enregistrerRoutine() {
     const etape = { texte: e.texte };
     if (e.image) etape.image = e.image;
     if (e.minutes) etape.minutes = e.minutes;
+    if (e.essentielle) etape.essentielle = true;
     return etape;
   });
   if (!nom) { annoncer('Donne un nom à la routine.'); document.getElementById('rf-nom').focus(); return; }
@@ -727,27 +810,108 @@ function sauverRoutineEnCours() {
   } catch (e) { /* mémoire pleine : la routine continue quand même */ }
 }
 
+// Les étapes à faire aujourd'hui, par leur position dans la routine
+// complète : toutes, ou seulement les essentielles pendant une journée
+// difficile. La routine enregistrée, elle, ne change jamais. Une routine
+// sans étape essentielle reste complète : on ne se retrouve jamais devant
+// une routine vide.
+function etapesDuJour(routine) {
+  const toutes = routine.etapes.map((e, i) => i);
+  const essentielles = toutes.filter(i => routine.etapes[i].essentielle);
+  return reglages.journeeDifficile && essentielles.length ? essentielles : toutes;
+}
+
+// Les étapes montrées pendant une routine commencée : celles du jour, plus
+// l'étape où l'on en est. Si « Journée difficile » est allumé en cours de
+// route, l'étape qu'on était en train de faire ne disparaît pas sous ses
+// yeux : seule la suite est raccourcie.
+function etapesMontrees(enCours) {
+  const liste = etapesDuJour(enCours.routine);
+  if (!liste.includes(enCours.index)) {
+    liste.push(enCours.index);
+    liste.sort((a, b) => a - b);
+  }
+  return liste;
+}
+
+// « Étape 2 sur 3 », compté parmi les étapes montrées.
+function positionRoutine(enCours) {
+  const liste = etapesMontrees(enCours);
+  return { numero: liste.indexOf(enCours.index) + 1, total: liste.length };
+}
+
 // Lancer une routine déjà commencée la reprend là où elle en était.
 function lancerRoutine(id) {
   const r = routines.find(x => x.id === id);
   if (!r) return;
   const reprise = routineEnCours && routineEnCours.routine.id === id;
   if (!reprise) {
-    routineEnCours = { routine: r, index: 0, passees: [] };
+    // Pendant une journée difficile, on commence directement à la
+    // première étape essentielle.
+    routineEnCours = { routine: r, index: etapesDuJour(r)[0], passees: [] };
     sauverRoutineEnCours();
   }
   document.getElementById('titre-routine-lancer').textContent = r.nom;
   document.getElementById('rl-apercu').open = false;
   desarmerBouton(document.getElementById('btn-rl-arreter'));
+  appliquerModeRoutine();
   afficherVue('routine-lancer');
   majAffichageRoutineLancer();
-  if (reprise) annoncer('Reprise à l’étape ' + (routineEnCours.index + 1) + '.');
+  if (reprise) annoncer('Reprise à l’étape ' + positionRoutine(routineEnCours).numero + '.');
+}
+
+// Mode « Une seule chose » : seule l'étape en cours reste à l'écran, en
+// grand. La classe « une-chose » sur l'écran cache tout ce qui est marqué
+// « hors-une-chose » (voir styles.css).
+function appliquerModeRoutine() {
+  const uneChose = reglages.routineUneChose;
+  document.getElementById('vue-routine-lancer').classList.toggle('une-chose', uneChose);
+  document.getElementById('btn-rl-mode').textContent = uneChose ? 'Voir tout' : 'Une seule chose';
+}
+
+function basculerModeRoutine() {
+  reglages.routineUneChose = !reglages.routineUneChose;
+  sauverReglages();
+  majCasesReglages();
+  appliquerModeRoutine();
+  // Seul le texte du gros bouton change : on ne réaffiche pas toute
+  // l'étape, ce qui relancerait sa durée prévue depuis le début.
+  majBoutonValiderRoutine();
+  annoncer(reglages.routineUneChose
+    ? 'Une seule chose : seule l’étape en cours est affichée.'
+    : 'Vue complète de la routine.');
+}
+
+// Le gros bouton dit « C'est fait ✓ » en vue complète. En mode « Une seule
+// chose », où l'on ne voit plus la suite, il dit ce qui va se passer.
+function majBoutonValiderRoutine() {
+  const liste = etapesMontrees(routineEnCours);
+  const derniere = liste[liste.length - 1] === routineEnCours.index;
+  document.getElementById('btn-rl-valider').textContent = !reglages.routineUneChose
+    ? 'C’est fait ✓'
+    : (derniere ? 'Terminer ✓' : 'Étape suivante ✓');
 }
 
 function majAffichageRoutineLancer() {
   const { routine, index, passees } = routineEnCours;
   const etape = routine.etapes[index];
-  document.getElementById('rl-compteur').textContent = `Étape ${index + 1} / ${routine.etapes.length}`;
+  const liste = etapesMontrees(routineEnCours);
+  const position = liste.indexOf(index);
+  document.getElementById('rl-compteur').textContent = `Étape ${position + 1} / ${liste.length}`;
+
+  // Journée difficile : une phrase dit pourquoi la routine est plus courte,
+  // ou pourquoi elle ne l'est pas (aucune étape essentielle choisie).
+  const note = document.getElementById('rl-note-difficile');
+  const nbEss = nombreEssentielles(routine);
+  if (reglages.journeeDifficile) {
+    note.querySelector('small').textContent = nbEss
+      ? 'Journée difficile : seulement les étapes essentielles (' + nbEss + ' sur ' + routine.etapes.length + ').'
+      : 'Journée difficile : cette routine n’a pas encore d’étape essentielle, elle reste donc complète. Tu peux en choisir avec « Modifier ».';
+  }
+  note.classList.toggle('masque', !reglages.journeeDifficile);
+  document.getElementById('rl-apercu-titre').textContent = reglages.journeeDifficile && nbEss
+    ? 'Voir les étapes essentielles'
+    : 'Voir toute la routine';
 
   const imageEl = document.getElementById('rl-etape-image');
   imageEl.textContent = etape.image || '';
@@ -756,7 +920,7 @@ function majAffichageRoutineLancer() {
 
   // Ce qui vient ensuite : savoir à l'avance enlève une part d'imprévu.
   const ensuiteEl = document.getElementById('rl-ensuite');
-  const suivante = routine.etapes[index + 1];
+  const suivante = routine.etapes[liste[position + 1]];
   if (suivante) {
     ensuiteEl.textContent = '';
     ensuiteEl.appendChild(document.createTextNode('Ensuite : '));
@@ -767,10 +931,12 @@ function majAffichageRoutineLancer() {
     ensuiteEl.textContent = 'C’est la dernière étape.';
   }
 
-  document.getElementById('btn-rl-precedente').classList.toggle('masque', index === 0);
+  document.getElementById('btn-rl-precedente').classList.toggle('masque', position === 0);
+  majBoutonValiderRoutine();
 
-  // La liste complète, avec l'étape en cours repérée.
-  document.getElementById('rl-liste').innerHTML = routine.etapes.map((e, i) => {
+  // La liste des étapes montrées, avec l'étape en cours repérée.
+  document.getElementById('rl-liste').innerHTML = liste.map(i => {
+    const e = routine.etapes[i];
     let classe = '';
     let suffixe = '';
     if (i === index) { classe = 'actuelle'; suffixe = ' <span class="duree">· maintenant</span>'; }
@@ -783,11 +949,20 @@ function majAffichageRoutineLancer() {
 }
 
 function etapeSuivanteRoutine() {
-  routineEnCours.index++;
-  if (routineEnCours.index >= routineEnCours.routine.etapes.length) {
+  const suivante = etapesMontrees(routineEnCours).find(i => i > routineEnCours.index);
+  if (suivante === undefined) {
     terminerRoutine();
     return;
   }
+  routineEnCours.index = suivante;
+  sauverRoutineEnCours();
+  majAffichageRoutineLancer();
+}
+
+function etapePrecedenteRoutine() {
+  const avant = etapesMontrees(routineEnCours).filter(i => i < routineEnCours.index);
+  if (!avant.length) return;
+  routineEnCours.index = avant[avant.length - 1];
   sauverRoutineEnCours();
   majAffichageRoutineLancer();
 }
@@ -816,6 +991,10 @@ function terminerRoutine() {
     ? (textes.length > 1 ? 'Passées cette fois : ' : 'Passée cette fois : ') + textes.join(', ') + '.'
     : '';
   zone.classList.toggle('masque', textes.length === 0);
+  // Une simple information, sans jugement : les étapes non essentielles
+  // n'étaient pas au programme aujourd'hui, elles ne sont pas « ratées ».
+  const allegee = reglages.journeeDifficile && nombreEssentielles(routine) > 0;
+  document.getElementById('rl-fin-difficile').classList.toggle('masque', !allegee);
   afficherVue('routine-fin');
 }
 
@@ -1014,12 +1193,13 @@ function rendreDetailTache() {
     cont.appendChild(label);
   });
 
-  // Mode « une étape à la fois » : voir douze étapes d'un coup peut
-  // décourager ; ici, une seule est à l'écran.
+  // Mode « Une seule chose » : voir douze étapes d'un coup peut
+  // décourager ; ici, une seule est à l'écran, en grand, sans la
+  // progression ni les autres boutons (classe « une-chose », comme pour
+  // les routines). Le bouton garde sa place et dit ce qu'il fera.
   const uneEtape = reglages.tacheUneEtape;
-  const btnMode = document.getElementById('btn-td-mode');
-  btnMode.setAttribute('aria-pressed', String(uneEtape));
-  btnMode.textContent = uneEtape ? 'Voir toutes les étapes' : 'Voir une étape à la fois';
+  document.getElementById('vue-tache-detail').classList.toggle('une-chose', uneEtape);
+  document.getElementById('btn-td-mode').textContent = uneEtape ? 'Voir tout' : 'Une seule chose';
   document.getElementById('td-une-etape').classList.toggle('masque', !uneEtape);
   document.getElementById('td-tout').classList.toggle('masque', uneEtape);
 
@@ -1036,7 +1216,9 @@ function rendreDetailTache() {
     imageEl.classList.toggle('masque', !e.image);
     texteEl.textContent = e.texte;
   }
-  document.getElementById('btn-td-ue-fait').classList.toggle('masque', tdIndexAffiche === null);
+  const btnFait = document.getElementById('btn-td-ue-fait');
+  btnFait.textContent = restantes.length > 1 ? 'Étape suivante ✓' : 'Terminer ✓';
+  btnFait.classList.toggle('masque', tdIndexAffiche === null);
   document.getElementById('btn-td-ue-autre').classList.toggle('masque', restantes.length < 2);
 
   const btnEpingle = document.getElementById('btn-td-epingler');
@@ -1284,13 +1466,23 @@ function recommencerMinuteur() {
 // Restaurer n'efface rien de ce qui est déjà là : les routines et les
 // tâches du fichier sont AJOUTÉES, sauf celles qui existent déjà (même
 // identifiant) — restaurer deux fois ne crée donc pas de doublon. Seuls les
-// réglages (thème, couleurs, taille du texte, options du minuteur) sont
-// remplacés.
+// réglages (thème, couleurs, taille du texte, options du minuteur, journée
+// difficile, modes « Une seule chose ») sont remplacés.
 //
 // Version 2 du fichier : les étapes de routine sont des objets
 // { texte, image, minutes } au lieu de simples textes, et les étapes de
 // tâche peuvent avoir une image. Les fichiers de version 1 se relisent
 // toujours : nettoyerRoutine() accepte les deux formes.
+//
+// Version 3 : une étape de routine peut être « essentielle »
+// ({ ..., essentielle: true }), et les réglages comptent deux cases de plus
+// (journeeDifficile, routineUneChose). Ce ne sont que des ajouts
+// facultatifs : un fichier de version 1 ou 2 se relit tel quel (une étape
+// sans « essentielle » ne l'est simplement pas).
+//
+// ATTENTION : les fonctions nettoyer…() ci-dessous ne gardent QUE les
+// informations qu'elles connaissent, au chargement comme à la restauration.
+// Toute nouvelle information doit y être ajoutée, sinon elle disparaîtrait.
 
 const CLE_DERNIERE_SAUVEGARDE = 'cap_derniere_sauvegarde';
 
@@ -1315,7 +1507,7 @@ function afficherDerniereSauvegarde() {
 function enregistrerSauvegarde() {
   const donnees = {
     app: 'cap',
-    version: 2,
+    version: 3,
     exporte: new Date().toISOString(),
     routines: routines,
     taches: taches,
@@ -1365,6 +1557,7 @@ function nettoyerEtapeRoutine(e) {
   const etape = { texte: e.texte };
   if (imageValable(e.image)) etape.image = e.image;
   if (Number.isInteger(e.minutes) && e.minutes >= 1 && e.minutes <= 180) etape.minutes = e.minutes;
+  if (e.essentielle === true) etape.essentielle = true;
   return etape;
 }
 
@@ -1398,7 +1591,8 @@ function nettoyerTache(t) {
 
 function nettoyerReglages(r) {
   const propre = {};
-  ['vibrationMinuteur', 'ecranAllumeMinuteur', 'preavisMinuteur', 'tacheUneEtape'].forEach(cle => {
+  ['vibrationMinuteur', 'ecranAllumeMinuteur', 'preavisMinuteur', 'tacheUneEtape',
+    'routineUneChose', 'journeeDifficile'].forEach(cle => {
     if (typeof r[cle] === 'boolean') propre[cle] = r[cle];
   });
   if (['auto', 'sombre', 'clair'].includes(r.theme)) propre.theme = r.theme;
@@ -1616,12 +1810,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-rl-valider').addEventListener('click', validerEtapeRoutine);
   document.getElementById('btn-rl-passer').addEventListener('click', passerEtapeRoutine);
   document.getElementById('btn-rl-precedente').addEventListener('click', () => {
-    if (routineEnCours && routineEnCours.index > 0) {
-      routineEnCours.index--;
-      sauverRoutineEnCours();
-      majAffichageRoutineLancer();
-    }
+    if (routineEnCours) etapePrecedenteRoutine();
   });
+  document.getElementById('btn-rl-mode').addEventListener('click', basculerModeRoutine);
   // Arrêter fait perdre la progression : deux appuis, comme une suppression.
   document.getElementById('btn-rl-arreter').addEventListener('click', (e) => {
     armerSuppression(e.currentTarget, 'Confirmer l’arrêt ?', arreterRoutine);
@@ -1687,7 +1878,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-td-mode').addEventListener('click', () => {
     reglages.tacheUneEtape = !reglages.tacheUneEtape;
     sauverReglages();
+    majCasesReglages();
     rendreDetailTache();
+    annoncer(reglages.tacheUneEtape
+      ? 'Une seule chose : seule une étape est affichée.'
+      : 'Vue complète de la tâche.');
   });
   document.getElementById('btn-td-ue-fait').addEventListener('click', () => {
     const t = taches.find(x => x.id === tacheOuverteId);
@@ -1793,6 +1988,13 @@ document.addEventListener('DOMContentLoaded', () => {
     appliquerApparence();
     majAffichageReglages();
   });
+  // ----- Réglages en cases à cocher (journée difficile, modes « Une seule
+  // chose ») : sur l'accueil comme dans Réglages -----
+  document.querySelectorAll('input[data-reglage]').forEach(c => {
+    c.addEventListener('change', () => changerReglageCase(c.dataset.reglage, c.checked));
+  });
+  majCasesReglages();
+
   // En mode « Automatique », si la personne change le thème de son
   // téléphone pendant que Cap est ouvert, on suit sans qu'elle ait à rouvrir l'app.
   if (window.matchMedia) {
