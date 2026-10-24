@@ -75,7 +75,7 @@ ligne de commande.
 
 À retenir : après toute modification de `index.html`, `styles.css`, `app.js`,
 `manifest.json` ou des icônes, augmentez le numéro de version tout en haut de
-`sw.js` (par exemple `cap-v14` → `cap-v15`). Sans cela, les téléphones
+`sw.js` (par exemple `cap-v16` → `cap-v17`). Sans cela, les téléphones
 continuent d'afficher l'ancienne version.
 
 ## Tester sur un ordinateur

@@ -3,7 +3,7 @@
    installée. Tout est mis en cache la première fois, puis servi depuis le
    téléphone. */
 
-const CACHE = 'cap-v15';
+const CACHE = 'cap-v16';
 
 /* La liste des fichiers indispensables au fonctionnement hors-ligne.
    Si on ajoute un fichier au projet, il faut aussi l'ajouter ici. */
@@ -30,11 +30,19 @@ self.addEventListener('install', (e) => {
   );
 });
 
-/* 2. Activation : on supprime les anciens caches d'une version précédente. */
+/* 2. Activation : on supprime NOS anciens caches d'une version précédente,
+      et seulement eux. Toutes les applications de ferrusdantioch.github.io
+      partagent la même liste de caches : supprimer tout ce qui n'est pas
+      CACHE effacerait aussi la copie hors ligne des autres applications.
+      On ne touche donc qu'aux noms qui commencent par « cap-v ». */
+const PREFIXE = 'cap-v';
+
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((cles) => Promise.all(cles.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((cles) => Promise.all(cles
+        .filter((k) => k !== CACHE && k.startsWith(PREFIXE))
+        .map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

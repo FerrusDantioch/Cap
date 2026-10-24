@@ -158,7 +158,7 @@ Après toute modification d'un fichier **mis en cache** (`index.html`,
 haut de `sw.js` :
 
 ```js
-const CACHE = 'cap-v15';   // → v16
+const CACHE = 'cap-v16';   // → v17
 ```
 
 Sans ce changement, le navigateur ne retélécharge rien. En cas d'**ajout de
