@@ -50,6 +50,21 @@
          rempli par app.js, vide s'il n'y a rien à reprendre. -->
     <div id="accueil-en-cours"></div>
 
+    <!-- Nouvelle version prête : rien ne change tant que la personne ne
+         l'a pas décidé. Montrée seulement ici, sur l'accueil, jamais pendant
+         une routine ou un minuteur (voir majCarteMiseAJour dans app.js). -->
+    <div id="accueil-mise-a-jour" class="carte carte-mise-a-jour masque">
+      <h2>Une nouvelle version de Cap est prête</h2>
+      <p>Tu choisis le moment. Tes routines, tes tâches et tes réglages
+         restent tels quels.</p>
+      <p><small>Si tu fermes complètement Cap, la nouvelle version sera là
+         à la prochaine ouverture.</small></p>
+      <div class="bouton-rangee">
+        <button type="button" id="btn-maj-oui" class="bouton-doux">Mettre à jour</button>
+        <button type="button" id="btn-maj-plus-tard" class="bouton-secondaire">Plus tard</button>
+      </div>
+    </div>
+
     <!-- La tâche épinglée : une seule chose sous les yeux, avec seulement
          sa prochaine petite étape. Masquée si aucune tâche n'est épinglée. -->
     <div id="accueil-tache-du-jour" class="carte tache-du-jour masque">

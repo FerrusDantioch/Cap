@@ -334,6 +334,11 @@ button:active { background: var(--bord); }
 .bouton-rangee { display: flex; flex-wrap: wrap; gap: 12px; }
 .bouton-rangee > * { flex: 1; }
 
+/* Carte « Une nouvelle version de Cap est prête » (accueil) : posée dans
+   la page comme les autres cartes, sans rien qui surgisse ni ne bouge. */
+.carte-mise-a-jour { border-color: var(--accent); }
+.carte-mise-a-jour h2 { margin-top: 0; }
+
 /* Un bouton armé attend un second appui avant une action qu'on ne peut pas
    annuler (supprimer une routine, une tâche...). */
 button.arme {

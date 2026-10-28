@@ -166,6 +166,17 @@ fichier**, l'inscrire aussi dans la liste `FICHIERS` du même fichier. **Ne
 pas** incrémenter pour un changement hors cache (README, GUIDE-GITHUB.md,
 LICENSE).
 
+## Nouvelle version : jamais de changement par surprise
+
+Une nouvelle version **attend** que la personne touche « Mettre à jour »
+(carte `#accueil-mise-a-jour`, sur l'accueil seulement, cachée pendant un
+minuteur et après « Plus tard »). Ne pas remettre `self.skipWaiting()` dans
+l'installation de `sw.js` : il n'est appelé qu'à la réception du message
+`{ type: 'activer' }`. Le `fetch` ne sert que la copie de `CACHE` et ne
+remplace jamais un fichier rangé en arrière-plan (sinon l'application
+changerait en douce). Limite du navigateur, dite sur la carte : si Cap est
+complètement fermée, la nouvelle version est là à l'ouverture suivante.
+
 ## Tester en local
 
 Ce dépôt ne contient pas de serveur de test. Un service worker ne fonctionne
