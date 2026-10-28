@@ -170,12 +170,16 @@ LICENSE).
 
 Une nouvelle version **attend** que la personne touche « Mettre à jour »
 (carte `#accueil-mise-a-jour`, sur l'accueil seulement, cachée pendant un
-minuteur et après « Plus tard »). Ne pas remettre `self.skipWaiting()` dans
-l'installation de `sw.js` : il n'est appelé qu'à la réception du message
-`{ type: 'activer' }`. Le `fetch` ne sert que la copie de `CACHE` et ne
-remplace jamais un fichier rangé en arrière-plan (sinon l'application
-changerait en douce). Limite du navigateur, dite sur la carte : si Cap est
-complètement fermée, la nouvelle version est là à l'ouverture suivante.
+minuteur et après « Plus tard »), **même si Cap est fermée puis rouverte**.
+- `sw.js` note la copie EN SERVICE dans le cache `cap-choix` ; le `fetch`
+  sert cette copie, jamais une autre. Un service worker plus récent, activé
+  par le navigateur à la réouverture, continue donc de servir l'ancienne.
+- Messages page ↔ service worker, **noms à ne jamais changer** (une ancienne
+  page doit pouvoir parler à un service worker plus récent) : `etat`
+  (réponse `{ nouvelleVersion }`), `activer` (la personne a accepté),
+  `recharger` (envoyé aux pages après acceptation).
+- Pas de `self.skipWaiting()` dans l'installation ; ne jamais remplacer un
+  fichier rangé en arrière-plan.
 
 ## Tester en local
 
