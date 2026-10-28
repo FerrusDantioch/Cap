@@ -578,6 +578,40 @@ function majAccueil() {
   });
 
   majTacheDuJour();
+  majCarteMiseAJour();
+}
+
+// ----- Nouvelle version de Cap -----
+// Le service worker télécharge une nouvelle version en arrière-plan, puis
+// ATTEND : rien ne change par surprise. L'accueil le dit, et c'est la
+// personne qui choisit « Mettre à jour » ou « Plus tard ».
+let inscriptionSw = null;          // l'inscription du service worker
+let miseAJourDemandee = false;     // vrai après un appui sur « Mettre à jour »
+let miseAJourRepoussee = false;    // « Plus tard » : plus rien jusqu'à la prochaine ouverture
+
+function surveillerMisesAJour(inscription) {
+  inscriptionSw = inscription;
+  // Une version attendait déjà (téléchargée lors d'une visite précédente).
+  // Sans « controller », c'est la toute première installation : rien à proposer.
+  if (inscription.waiting && navigator.serviceWorker.controller) majCarteMiseAJour();
+  inscription.addEventListener('updatefound', () => {
+    const nouveau = inscription.installing;
+    if (!nouveau) return;
+    nouveau.addEventListener('statechange', () => {
+      if (nouveau.state === 'installed' && navigator.serviceWorker.controller) majCarteMiseAJour();
+    });
+  });
+  // À chaque retour dans Cap, on regarde s'il existe une nouvelle version.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') inscription.update().catch(() => {});
+  });
+}
+
+function majCarteMiseAJour() {
+  const prete = !!(inscriptionSw && inscriptionSw.waiting && navigator.serviceWorker.controller);
+  // Pendant un minuteur, on ne propose rien : recharger Cap l'arrêterait.
+  const montrer = prete && !miseAJourRepoussee && !minEnCours;
+  document.getElementById('accueil-mise-a-jour').classList.toggle('masque', !montrer);
 }
 
 function tacheEpinglee() {
@@ -2495,12 +2529,29 @@ document.addEventListener('DOMContentLoaded', () => {
   // L'accueil montre tout de suite une routine commencée ou une tâche épinglée.
   majAccueil();
 
-  // ----- Service worker : installation hors-ligne -----
+  // ----- Service worker : installation hors-ligne et nouvelles versions -----
   if ('serviceWorker' in navigator) {
+    // Ce changement a aussi lieu à la toute première installation : on ne
+    // recharge que si la personne a touché « Mettre à jour ».
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (miseAJourDemandee) window.location.reload();
+    });
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js').then(surveillerMisesAJour).catch(() => {});
     });
   }
+  document.getElementById('btn-maj-oui').addEventListener('click', (e) => {
+    if (!inscriptionSw || !inscriptionSw.waiting) return;
+    miseAJourDemandee = true;
+    e.currentTarget.disabled = true;
+    e.currentTarget.textContent = 'Mise à jour…';
+    inscriptionSw.waiting.postMessage({ type: 'activer' });
+  });
+  document.getElementById('btn-maj-plus-tard').addEventListener('click', () => {
+    miseAJourRepoussee = true;
+    majCarteMiseAJour();
+    annoncer('D’accord. Cap te le reproposera à la prochaine ouverture.');
+  });
 
   // ----- Stockage persistant -----
   // Par défaut, le navigateur peut effacer de lui-même la copie hors-ligne
