@@ -583,17 +583,36 @@ function majAccueil() {
 
 // ----- Nouvelle version de Cap -----
 // Le service worker télécharge une nouvelle version en arrière-plan, puis
-// ATTEND : rien ne change par surprise. L'accueil le dit, et c'est la
-// personne qui choisit « Mettre à jour » ou « Plus tard ».
+// ATTEND : rien ne change par surprise, même si Cap est fermée puis
+// rouverte (voir sw.js). L'accueil le dit, et c'est la personne qui
+// choisit « Mettre à jour » ou « Plus tard ».
+// Une nouvelle version peut attendre de deux façons :
+// - son service worker attend (inscriptionSw.waiting) ;
+// - ou il est déjà actif (Cap a été fermée puis rouverte) mais sert encore
+//   l'ancienne copie : il le dit quand on lui demande son « etat ».
 let inscriptionSw = null;          // l'inscription du service worker
 let miseAJourDemandee = false;     // vrai après un appui sur « Mettre à jour »
 let miseAJourRepoussee = false;    // « Plus tard » : plus rien jusqu'à la prochaine ouverture
+let versionEnAttente = false;      // réponse du service worker à « etat »
+
+// Demande au service worker en place si une nouvelle version attend.
+function demanderEtat() {
+  const sw = navigator.serviceWorker.controller;
+  if (!sw) return;
+  const canal = new MessageChannel();
+  canal.port1.onmessage = (e) => {
+    versionEnAttente = !!(e.data && e.data.nouvelleVersion);
+    majCarteMiseAJour();
+  };
+  sw.postMessage({ type: 'etat' }, [canal.port2]);
+}
 
 function surveillerMisesAJour(inscription) {
   inscriptionSw = inscription;
   // Une version attendait déjà (téléchargée lors d'une visite précédente).
   // Sans « controller », c'est la toute première installation : rien à proposer.
-  if (inscription.waiting && navigator.serviceWorker.controller) majCarteMiseAJour();
+  majCarteMiseAJour();
+  demanderEtat();
   inscription.addEventListener('updatefound', () => {
     const nouveau = inscription.installing;
     if (!nouveau) return;
@@ -608,7 +627,8 @@ function surveillerMisesAJour(inscription) {
 }
 
 function majCarteMiseAJour() {
-  const prete = !!(inscriptionSw && inscriptionSw.waiting && navigator.serviceWorker.controller);
+  const enAttente = !!(inscriptionSw && inscriptionSw.waiting) || versionEnAttente;
+  const prete = enAttente && !!navigator.serviceWorker.controller;
   // Pendant un minuteur, on ne propose rien : recharger Cap l'arrêterait.
   const montrer = prete && !miseAJourRepoussee && !minEnCours;
   document.getElementById('accueil-mise-a-jour').classList.toggle('masque', !montrer);
@@ -2535,17 +2555,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // recharge que si la personne a touché « Mettre à jour ».
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (miseAJourDemandee) window.location.reload();
+      else demanderEtat();
+    });
+    // Le service worker déjà actif a mis la nouvelle version en service.
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'recharger') window.location.reload();
     });
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js').then(surveillerMisesAJour).catch(() => {});
     });
   }
   document.getElementById('btn-maj-oui').addEventListener('click', (e) => {
-    if (!inscriptionSw || !inscriptionSw.waiting) return;
+    // Le service worker qui attend, sinon celui qui est déjà actif.
+    const sw = (inscriptionSw && inscriptionSw.waiting) || navigator.serviceWorker.controller;
+    if (!sw) return;
     miseAJourDemandee = true;
     e.currentTarget.disabled = true;
     e.currentTarget.textContent = 'Mise à jour…';
-    inscriptionSw.waiting.postMessage({ type: 'activer' });
+    sw.postMessage({ type: 'activer' });
   });
   document.getElementById('btn-maj-plus-tard').addEventListener('click', () => {
     miseAJourRepoussee = true;
