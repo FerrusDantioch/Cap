@@ -44,28 +44,28 @@ Plusieurs fonctions viennent de suggestions de personnes autistes :
   est respecté.
 - **Aucune pression** : pas de points, pas de badges, pas de séries de jours.
   Quand le temps prévu d'une étape est écoulé, l'étape reste affichée : c'est
-  vous qui décidez de passer à la suite.
+  toi qui décides de passer à la suite.
 - **Grandes zones à toucher** (au moins 60 px).
 
-## Vos données
+## Tes données
 
 Tout reste dans le téléphone : aucun compte, aucun envoi sur internet, aucune
-publicité. Réglages → « Sauvegarde de mes données » permet d'enregistrer vos
+publicité. Réglages → « Sauvegarde de mes données » permet d'enregistrer tes
 routines, tâches, réglages et historique dans un fichier, puis de les
 restaurer.
 
-Effacer les données du site dans le navigateur efface aussi vos routines et
-vos tâches : pensez à faire une sauvegarde de temps en temps.
+Effacer les données du site dans le navigateur efface aussi tes routines et
+tes tâches : pense à faire une sauvegarde de temps en temps.
 
 ## Installer sur un téléphone Android
 
-1. Ouvrez l'adresse de l'application dans le navigateur.
+1. Ouvre l'adresse de l'application dans le navigateur.
 2. Menu ⋮ → **Ajouter à l'écran d'accueil** → **Installer**.
 
 Si Chrome indique « Cette appli est déjà installée » alors qu'elle ne l'est
 pas, c'est une limite de Chrome quand une autre application de
-`ferrusdantioch.github.io` est déjà installée. Installez Cap depuis Brave, ou
-choisissez « Créer un raccourci » dans Chrome.
+`ferrusdantioch.github.io` est déjà installée. Installe Cap depuis Brave, ou
+choisis « Créer un raccourci » dans Chrome.
 
 ## Publier et modifier l'application
 
@@ -73,10 +73,10 @@ Le guide [GUIDE-GITHUB.md](GUIDE-GITHUB.md) explique comment publier et
 modifier Cap **entièrement depuis un téléphone Android**, sans ordinateur ni
 ligne de commande.
 
-À retenir : après toute modification de `index.html`, `styles.css`, `app.js`,
-`manifest.json` ou des icônes, augmentez le numéro de version tout en haut de
-`sw.js` (par exemple `cap-v16` → `cap-v17`). Sans cela, les téléphones
-continuent d'afficher l'ancienne version.
+À retenir : après toute modification de `index.html`, `theme-init.js`,
+`styles.css`, `app.js`, `manifest.json` ou des icônes, augmente le numéro de
+version tout en haut de `sw.js` (par exemple `cap-v21` → `cap-v22`). Sans
+cela, les téléphones continuent d'afficher l'ancienne version.
 
 ## Tester sur un ordinateur
 
@@ -88,18 +88,30 @@ dossier du projet :
 python3 -m http.server 8000
 ```
 
-puis ouvrez http://localhost:8000.
+puis ouvre http://localhost:8000.
+
+Pour lancer les tests automatisés (vérifications statiques et tests navigateur
+Playwright, avec `playwright` installé) :
+
+```bash
+npm test
+```
 
 ## Les fichiers
 
 | Fichier | Rôle |
 |---|---|
 | `index.html` | Les écrans et tous les textes affichés |
+| `theme-init.js` | Pose le thème, la gamme et la taille du texte avant le premier affichage |
 | `styles.css` | Couleurs, tailles, mise en page |
 | `app.js` | Le comportement : routines, tâches, minuteur, réglages |
 | `sw.js` | Le mode hors-ligne |
-| `manifest.json` | Nom et icône de l'application |
-| `icons/` | Les icônes |
+| `manifest.json` | Nom, raccourcis et icônes de l'application |
+| `icons/` | Les 5 icônes (standard, maskable et Apple Touch Icon) |
+| `tests/` | Les tests automatisés (statique et Playwright) |
+| `package.json` | Les scripts `npm test`, `test:static` et `test:e2e` |
+| `.github/workflows/ci.yml` | L'exécution automatique des tests sur GitHub Actions |
+| `.nojekyll` / `.gitattributes` / `.gitignore` | Configuration GitHub Pages (sans Jekyll) et fins de ligne LF |
 | `GUIDE-GITHUB.md` | Publier et modifier depuis un téléphone |
 
 Tout le code est commenté en français.

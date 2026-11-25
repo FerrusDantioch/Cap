@@ -959,3 +959,50 @@ details.apercu li.faite { text-decoration: line-through; }
 @media not all and (display-mode: browser) {
   .note-installation { display: none; }
 }
+
+/* ---------- Utilitaires et pastilles (sans styles inline pour la CSP) ---------- */
+
+.mt-0  { margin-top: 0; }
+.mt-8  { margin-top: 8px; }
+.mt-10 { margin-top: 10px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
+.mt-24 { margin-top: 24px; }
+.mb-8  { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.mb-14 { margin-bottom: 14px; }
+.mb-18 { margin-bottom: 18px; }
+.mb-20 { margin-bottom: 20px; }
+
+.ecran-fin { text-align: center; padding: 60px 10px; }
+.texte-doux { color: var(--texte-doux); }
+
+#rl-barre-etape { width: 100%; }
+#td-barre { width: 0%; }
+#btn-min-libre-valider { width: auto; min-width: 100px; }
+
+button[data-palette-val="bleu"] .pastille    { background: #9dbcd0; }
+button[data-palette-val="sauge"] .pastille   { background: #a5ccb4; }
+button[data-palette-val="lavande"] .pastille { background: #c0b6e6; }
+button[data-palette-val="sable"] .pastille   { background: #b89a7a; }
+button[data-palette-val="peche"] .pastille   { background: #ddb8a3; }
+button[data-palette-val="miel"] .pastille    { background: #d6c19f; }
+button[data-palette-val="rose"] .pastille    { background: #daabb5; }
+
+/* Alerte calme en cas de mémoire du navigateur pleine (QuotaExceededError). */
+.carte-alerte {
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto 16px;
+  background: var(--fini-fond);
+  border-color: var(--fini);
+  color: var(--texte);
+}
+.carte-alerte p { margin-bottom: 12px; }
+.carte-alerte button {
+  background: var(--surface);
+  border-color: var(--fini);
+  color: var(--texte);
+  min-height: 60px;
+}

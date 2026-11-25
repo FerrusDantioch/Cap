@@ -3,18 +3,22 @@
    installée. Tout est mis en cache la première fois, puis servi depuis le
    téléphone. */
 
-const CACHE = 'cap-v20';
+const CACHE = 'cap-v21';
 
 /* La liste des fichiers indispensables au fonctionnement hors-ligne.
    Si on ajoute un fichier au projet, il faut aussi l'ajouter ici. */
 const FICHIERS = [
   './',
   './index.html',
+  './theme-init.js',
   './styles.css',
   './app.js',
   './manifest.json',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './icons/icon-maskable-192.png',
+  './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon.png'
 ];
 
 /* NOUVELLE VERSION : JAMAIS SANS L'ACCORD DE LA PERSONNE
@@ -118,14 +122,28 @@ self.addEventListener('message', (e) => {
       l'application changerait en douce, sans passer par « Mettre à jour ». */
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return;
   e.respondWith((async () => {
     const enService = (await versionEnService()) || CACHE;
     const copie = await caches.open(enService);
-    let rep = await copie.match(e.request);
-    if (!rep && enService !== CACHE) rep = await (await caches.open(CACHE)).match(e.request);
+    let rep = await copie.match(e.request, { ignoreSearch: true });
+    if (!rep && enService !== CACHE) rep = await (await caches.open(CACHE)).match(e.request, { ignoreSearch: true });
     if (rep) return rep;
-    rep = await fetch(e.request);
-    if (rep && rep.status === 200 && rep.type === 'basic') copie.put(e.request, rep.clone());
-    return rep;
+    try {
+      rep = await fetch(e.request);
+      if (rep && rep.status === 200 && rep.type === 'basic') copie.put(e.request, rep.clone()).catch(() => {});
+      return rep;
+    } catch (err) {
+      if (e.request.mode === 'navigate') {
+        const fallback = (await copie.match('./index.html')) || (await (await caches.open(CACHE)).match('./index.html'));
+        if (fallback) return fallback;
+      }
+      return new Response('Hors ligne', {
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      });
+    }
   })());
 });

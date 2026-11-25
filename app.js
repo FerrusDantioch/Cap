@@ -31,13 +31,49 @@ const DUREES_TRANSITION = [5, 10, 20, 30];
 // donnée abîmée est écartée au lieu d'empêcher Cap de démarrer, et les
 // routines écrites par une ancienne version (étapes en simple texte) sont
 // converties au nouveau format (étapes avec image et durée facultatives).
+function signalerStockagePlein() {
+  const texte = 'La mémoire du navigateur est pleine : ce changement n’a pas pu être enregistré. Pense à faire une sauvegarde dans Réglages.';
+  const alerte = document.getElementById('alerte-stockage');
+  const zoneTexte = document.getElementById('alerte-stockage-texte');
+  if (alerte && zoneTexte) {
+    zoneTexte.textContent = texte;
+    alerte.classList.remove('masque');
+  }
+  annoncer(texte);
+}
+
+function masquerAlerteStockage() {
+  const alerte = document.getElementById('alerte-stockage');
+  if (alerte) alerte.classList.add('masque');
+}
+
+function ecrireStockage(cle, valeur, silencieux) {
+  try {
+    localStorage.setItem(cle, valeur);
+    if (!silencieux) masquerAlerteStockage();
+    return true;
+  } catch (e) {
+    if (!silencieux) signalerStockagePlein();
+    return false;
+  }
+}
+
+function supprimerStockage(cle) {
+  try {
+    localStorage.removeItem(cle);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function chargerRoutines() {
   let brut = null;
   try { brut = JSON.parse(localStorage.getItem(CLE_ROUTINES)); } catch (e) { /* rien */ }
   return Array.isArray(brut) ? brut.map(nettoyerRoutine).filter(Boolean) : [];
 }
 function sauverRoutines() {
-  localStorage.setItem(CLE_ROUTINES, JSON.stringify(routines));
+  return ecrireStockage(CLE_ROUTINES, JSON.stringify(routines), false);
 }
 
 function chargerTaches() {
@@ -48,7 +84,7 @@ function chargerTaches() {
   return liste;
 }
 function sauverTaches() {
-  localStorage.setItem(CLE_TACHES, JSON.stringify(taches));
+  return ecrireStockage(CLE_TACHES, JSON.stringify(taches), false);
 }
 
 // L'historique des routines terminées : [{ id, date, nom, essentiel? }],
@@ -60,8 +96,7 @@ function chargerHistorique() {
   return liste.sort((a, b) => a.date - b.date).slice(-HISTORIQUE_MAX);
 }
 function sauverHistorique() {
-  try { localStorage.setItem(CLE_HISTORIQUE, JSON.stringify(historique)); }
-  catch (e) { /* mémoire pleine : la routine est finie quand même */ }
+  return ecrireStockage(CLE_HISTORIQUE, JSON.stringify(historique), true);
 }
 
 function chargerReglages() {
@@ -93,7 +128,7 @@ function chargerReglages() {
   catch (e) { return defaut; }
 }
 function sauverReglages() {
-  localStorage.setItem(CLE_REGLAGES, JSON.stringify(reglages));
+  return ecrireStockage(CLE_REGLAGES, JSON.stringify(reglages), false);
 }
 
 function creerId(prefixe) {
@@ -245,9 +280,12 @@ const GRACE_ECRAN_APRES_FIN_MS = 60 * 1000;
 /* ---------- 4. Petits outils partagés ---------- */
 
 function echapper(texte) {
-  const d = document.createElement('div');
-  d.textContent = texte;
-  return d.innerHTML;
+  return String(texte == null ? '' : texte)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function annoncer(texte) {
@@ -503,7 +541,33 @@ function changerReglageCase(nom, valeur) {
 
 /* ---------- 6. Navigation entre les écrans ---------- */
 
-function afficherVue(nom) {
+let declencheurAccueil = null;
+let retoursHistoriqueEnAttente = 0;
+
+function titreVue(nom) {
+  switch (nom) {
+    case 'accueil': return 'Cap';
+    case 'routines': return 'Mes routines — Cap';
+    case 'historique': return 'Historique — Cap';
+    case 'routine-form': return (routineEnEdition ? 'Modifier la routine' : 'Nouvelle routine') + ' — Cap';
+    case 'routine-lancer': return (routineEnCours ? routineEnCours.routine.nom : 'Routine') + ' — Cap';
+    case 'routine-fin': return 'Routine terminée — Cap';
+    case 'taches': return 'Mes tâches — Cap';
+    case 'tache-form': return (tacheEnEdition ? 'Modifier la tâche' : 'Nouvelle tâche') + ' — Cap';
+    case 'tache-detail': {
+      const t = taches.find(x => x.id === tacheOuverteId);
+      return (t ? t.nom : 'Tâche') + ' — Cap';
+    }
+    case 'minuteur': return 'Minuteur — Cap';
+    case 'reglages': return 'Réglages — Cap';
+    default: return 'Cap';
+  }
+}
+
+function afficherVue(nom, options) {
+  const opts = options || {};
+  const ancien = vueCourante;
+
   // Quitter l'écran d'une routine coupe le petit minuteur de l'étape : il
   // repartira de zéro au retour (on ne revient pas à une étape « en retard »).
   if (nom !== 'routine-lancer') arreterMinuteurEtape();
@@ -512,7 +576,22 @@ function afficherVue(nom) {
   // Changer d'écran annule une pause douce en cours.
   finirPause(false);
 
+  if (!opts.depuisPopstate && window.history && window.history.pushState) {
+    if (ancien === 'accueil' && nom !== 'accueil') {
+      const actif = document.activeElement;
+      const vueAccueil = document.getElementById('vue-accueil');
+      declencheurAccueil = (actif && vueAccueil && vueAccueil.contains(actif)) ? actif : null;
+      history.pushState({ vue: nom }, '');
+    } else if (ancien !== 'accueil' && nom !== 'accueil') {
+      history.replaceState({ vue: nom }, '');
+    } else if (ancien !== 'accueil' && nom === 'accueil' && history.state && history.state.vue !== 'accueil') {
+      retoursHistoriqueEnAttente++;
+      history.back();
+    }
+  }
+
   vueCourante = nom;
+  document.title = titreVue(nom);
   document.querySelectorAll('.vue').forEach(v => {
     const active = v.id === 'vue-' + nom;
     v.hidden = !active;
@@ -520,6 +599,16 @@ function afficherVue(nom) {
   });
   if (nom === 'accueil') majAccueil();
   window.scrollTo(0, 0);
+
+  if (nom === 'accueil' && ancien !== 'accueil') {
+    const cible = declencheurAccueil;
+    declencheurAccueil = null;
+    if (cible && cible.isConnected && !cible.hidden && !cible.closest('.masque')) {
+      cible.focus({ preventScroll: true });
+      return;
+    }
+  }
+
   const vue = document.getElementById('vue-' + nom);
   const titre = vue ? vue.querySelector('h1') : null;
   if (titre) {
@@ -893,7 +982,7 @@ function lireEtapes(conteneur) {
 
 function viderEditeur(conteneur) {
   fermerChoixImage();
-  conteneur.innerHTML = '';
+  conteneur.textContent = '';
 }
 
 /* ---------- 9. Routines ---------- */
@@ -929,9 +1018,9 @@ function rendreListeRoutines() {
           ${listeEtapesHtml(r.etapes)}
         </details>
         <div class="bouton-rangee">
-          <button type="button" class="bouton-doux" data-action="lancer" data-id="${r.id}">${enCours ? 'Reprendre' : 'Lancer'}</button>
-          <button type="button" data-action="modifier" data-id="${r.id}">Modifier</button>
-          <button type="button" data-action="supprimer" data-id="${r.id}">Supprimer</button>
+          <button type="button" class="bouton-doux" data-action="lancer" data-id="${echapper(r.id)}">${enCours ? 'Reprendre' : 'Lancer'}</button>
+          <button type="button" data-action="modifier" data-id="${echapper(r.id)}">Modifier</button>
+          <button type="button" data-action="supprimer" data-id="${echapper(r.id)}">Supprimer</button>
         </div>
       </div>
     `;
@@ -1027,17 +1116,15 @@ function chargerRoutineEnCours() {
 }
 
 function sauverRoutineEnCours() {
-  try {
-    if (routineEnCours) {
-      localStorage.setItem(CLE_ROUTINE_EN_COURS, JSON.stringify({
-        id: routineEnCours.routine.id,
-        index: routineEnCours.index,
-        passees: routineEnCours.passees
-      }));
-    } else {
-      localStorage.removeItem(CLE_ROUTINE_EN_COURS);
-    }
-  } catch (e) { /* mémoire pleine : la routine continue quand même */ }
+  if (routineEnCours) {
+    ecrireStockage(CLE_ROUTINE_EN_COURS, JSON.stringify({
+      id: routineEnCours.routine.id,
+      index: routineEnCours.index,
+      passees: routineEnCours.passees
+    }), true);
+  } else {
+    supprimerStockage(CLE_ROUTINE_EN_COURS);
+  }
 }
 
 // Les étapes à faire aujourd'hui, par leur position dans la routine
@@ -1397,8 +1484,8 @@ function rendreListeTaches() {
         <div class="nom">${echapper(t.nom)}</div>
         <div class="meta">${meta}</div>
         <div class="bouton-rangee">
-          <button type="button" class="bouton-doux" data-action="ouvrir" data-id="${t.id}">${ongletTachesActif === 'en-cours' ? 'Ouvrir' : 'Revoir'}</button>
-          <button type="button" data-action="supprimer" data-id="${t.id}">Supprimer</button>
+          <button type="button" class="bouton-doux" data-action="ouvrir" data-id="${echapper(t.id)}">${ongletTachesActif === 'en-cours' ? 'Ouvrir' : 'Revoir'}</button>
+          <button type="button" data-action="supprimer" data-id="${echapper(t.id)}">Supprimer</button>
         </div>
       </div>
     `;
@@ -1584,7 +1671,7 @@ function rendreDetailTache() {
 
   // Liste complète, à cocher.
   const cont = document.getElementById('td-etapes');
-  cont.innerHTML = '';
+  cont.textContent = '';
   t.etapes.forEach((e, i) => {
     const label = document.createElement('label');
     label.className = 'etape-cochable';
@@ -1962,7 +2049,7 @@ function enregistrerSauvegarde() {
   lien.click();
   setTimeout(() => URL.revokeObjectURL(lien.href), 2000);
 
-  try { localStorage.setItem(CLE_DERNIERE_SAUVEGARDE, String(Date.now())); } catch (e) { /* rien */ }
+  ecrireStockage(CLE_DERNIERE_SAUVEGARDE, String(Date.now()), true);
   afficherDerniereSauvegarde();
   messageSauvegarde('Fichier « ' + nom + ' » créé dans tes Téléchargements. ' +
     'Tu peux aussi le copier ailleurs (clé USB, ordinateur) pour plus de sûreté.');
@@ -2145,6 +2232,11 @@ function confirmerRestauration() {
   const idsHistorique = new Set(historique.map(x => x.id));
   const nouvellesEntrees = r.historique.filter(x => !idsHistorique.has(x.id));
 
+  const ancRoutines = routines;
+  const ancTaches = taches;
+  const ancHistorique = historique;
+  const ancReglages = Object.assign({}, reglages);
+
   routines = routines.concat(nouvellesRoutines);
   taches = taches.concat(nouvellesTaches);
   // La tâche déjà épinglée sur ce téléphone garde sa place.
@@ -2153,16 +2245,25 @@ function confirmerRestauration() {
   historique = historique.concat(nouvellesEntrees).sort((a, b) => a.date - b.date).slice(-HISTORIQUE_MAX);
   Object.assign(reglages, r.reglages);
 
-  try {
-    sauverRoutines();
-    sauverTaches();
-    sauverReglages();
-    localStorage.setItem(CLE_HISTORIQUE, JSON.stringify(historique));
-  } catch (e) {
+  const ok = ecrireStockage(CLE_ROUTINES, JSON.stringify(routines), true) &&
+    ecrireStockage(CLE_TACHES, JSON.stringify(taches), true) &&
+    ecrireStockage(CLE_REGLAGES, JSON.stringify(reglages), true) &&
+    ecrireStockage(CLE_HISTORIQUE, JSON.stringify(historique), true);
+  if (!ok) {
+    routines = ancRoutines;
+    taches = ancTaches;
+    historique = ancHistorique;
+    reglages = ancReglages;
+    ecrireStockage(CLE_ROUTINES, JSON.stringify(routines), true);
+    ecrireStockage(CLE_TACHES, JSON.stringify(taches), true);
+    ecrireStockage(CLE_REGLAGES, JSON.stringify(reglages), true);
+    ecrireStockage(CLE_HISTORIQUE, JSON.stringify(historique), true);
+    signalerStockagePlein();
     messageSauvegarde('La restauration n’a pas pu être enregistrée : la mémoire du navigateur est peut-être pleine.');
     annoncer('Restauration impossible.');
     return;
   }
+  masquerAlerteStockage();
 
   // Les écrans se mettent à jour tout de suite, sans recharger Cap.
   appliquerApparence();
@@ -2549,6 +2650,61 @@ document.addEventListener('DOMContentLoaded', () => {
   // L'accueil montre tout de suite une routine commencée ou une tâche épinglée.
   majAccueil();
 
+  document.getElementById('btn-alerte-stockage-fermer').addEventListener('click', masquerAlerteStockage);
+
+  // Navigation clavier (Échap) et bouton Retour du téléphone (popstate),
+  // sans jamais perdre la progression d'une routine en cours.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (choixImage && choixImage._ligne) {
+      const ligne = choixImage._ligne;
+      fermerChoixImage();
+      const btnImg = ligne.querySelector('button[data-dir="image"]');
+      if (btnImg) btnImg.focus();
+      return;
+    }
+    const confirmRestaurer = document.getElementById('restaurer-confirmation');
+    if (confirmRestaurer && !confirmRestaurer.classList.contains('masque')) {
+      fermerConfirmationRestauration();
+      document.getElementById('btn-restaurer').focus();
+      return;
+    }
+    if (vueCourante !== 'accueil') {
+      fermerChoixImage();
+      afficherVue('accueil');
+    }
+  });
+  window.addEventListener('popstate', () => {
+    if (retoursHistoriqueEnAttente > 0) {
+      retoursHistoriqueEnAttente--;
+      return;
+    }
+    if (vueCourante === 'accueil') return;
+    fermerChoixImage();
+    fermerConfirmationRestauration();
+    afficherVue('accueil', { depuisPopstate: true });
+  });
+
+  if (window.history && window.history.replaceState) {
+    history.replaceState({ vue: 'accueil' }, '');
+  }
+  const vueDemandee = new URLSearchParams(window.location.search).get('vue');
+  if (vueDemandee === 'minuteur') {
+    afficherVue('minuteur');
+  } else if (vueDemandee === 'taches') {
+    ongletTachesActif = 'en-cours';
+    majOngletsTaches();
+    afficherVue('taches');
+    rendreListeTaches();
+  } else if (vueDemandee === 'routines') {
+    montrerModeles(false);
+    afficherVue('routines');
+    rendreListeRoutines();
+  } else if (vueDemandee === 'reglages') {
+    majAffichageReglages();
+    afficherVue('reglages');
+  }
+
   // ----- Service worker : installation hors-ligne et nouvelles versions -----
   if ('serviceWorker' in navigator) {
     // Ce changement a aussi lieu à la toute première installation : on ne
@@ -2562,7 +2718,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.data && e.data.type === 'recharger') window.location.reload();
     });
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').then(surveillerMisesAJour).catch(() => {});
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(surveillerMisesAJour).catch(() => {});
     });
   }
   document.getElementById('btn-maj-oui').addEventListener('click', (e) => {

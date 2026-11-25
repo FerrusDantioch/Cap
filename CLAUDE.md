@@ -105,8 +105,8 @@ l'accueil.
   accents sont des pastels (clairs, peu saturés) pour rester lisibles sur
   fond foncé. Choisies dans Réglages et appliquées via `data-mode="<gamme>-
   <sombre|clair>"` sur `<html>` (voir `themeEffectif()` /
-  `appliquerApparence()` dans `app.js`, et le petit script identique dans
-  le `<head>` de `index.html` qui évite un flash de mauvaises couleurs).
+  `appliquerApparence()` dans `app.js`, et `theme-init.js` chargé dans le
+  `<head>` de `index.html` pour éviter un flash de mauvaises couleurs).
   Toute nouvelle gamme ajoutée doit rester dans la même plage de
   saturation et de contraste que les existantes — jamais un accent saturé
   ou un fond franc. Le texte secondaire `--texte-doux` garde un contraste
@@ -132,9 +132,24 @@ l'accueil.
   `Notification` ou `setTimeout`/`setInterval` de longue durée qui suppose
   que l'app reste ouverte en arrière-plan au-delà de l'onglet actif.
 - **Retour à l'accueil en un geste** depuis n'importe quel écran (bouton
-  `←` en haut de chaque vue secondaire). Ne pas introduire de menu ou de
-  navigation imbriquée plus complexe. Pendant une routine, `←` garde la
-  progression ; l'accueil propose alors « Reprendre ».
+  `←` en haut de chaque vue secondaire, touche `Échap` et bouton Retour du
+  navigateur/Android via `history.pushState`/`popstate` à un niveau). Ne pas
+  introduire de menu ou de navigation imbriquée plus complexe. L'ouverture
+  d'une vue par `?vue=` (`minuteur`, `taches`, `routines`, `reglages`, avec
+  repli vers l'accueil sinon) sert aux raccourcis du manifeste. `afficherVue()`
+  met à jour `document.title` et restaure le focus à l'accueil. Pendant une
+  routine, `←`, `Échap` et `popstate` gardent la progression ; l'accueil
+  propose alors « Reprendre ».
+- **Sécurité et robustesse `localStorage`** : `index.html` pose une politique
+  CSP stricte (`default-src 'none'`, `script-src 'self'`, `style-src 'self'`,
+  `img-src 'self'`, `connect-src 'self'`, `object-src 'none'`,
+  `base-uri 'none'`, `manifest-src 'self'`, `worker-src 'self'`), sans
+  aucun `<script>`/`<style>`/`style="..."`/`on*=` inline. `echapper()` neutralise
+  `&`, `<`, `>`, `"` et `'`, y compris pour `r.id`/`t.id` dans les rendus HTML.
+  Toutes les écritures/suppressions `localStorage` passent par
+  `ecrireStockage()` / `supprimerStockage()` (`try/catch`), avec alerte calme
+  non bloquante (`#alerte-stockage`) en cas de mémoire pleine et rollback
+  mémoire dans `confirmerRestauration()`.
 - **Suppression = deux appuis.** Utiliser `armerSuppression()` (déjà dans
   `app.js`) pour toute action destructive, jamais un `confirm()` natif.
   « Arrêter la routine » (qui fait perdre la progression) suit la même règle.
@@ -154,17 +169,18 @@ l'accueil.
 ## ⚠️ Avant de pousser : incrémenter la version du service worker
 
 Après toute modification d'un fichier **mis en cache** (`index.html`,
-`app.js`, `styles.css`, `manifest.json`, icônes), incrémenter la constante en
-haut de `sw.js` :
+`theme-init.js`, `app.js`, `styles.css`, `manifest.json`, les 5 icônes dans
+`icons/`), incrémenter la constante en haut de `sw.js` :
 
 ```js
-const CACHE = 'cap-v17';   // → v18
+const CACHE = 'cap-v21';   // → v22
 ```
 
 Sans ce changement, le navigateur ne retélécharge rien. En cas d'**ajout de
 fichier**, l'inscrire aussi dans la liste `FICHIERS` du même fichier. **Ne
-pas** incrémenter pour un changement hors cache (README, GUIDE-GITHUB.md,
-LICENSE).
+pas** incrémenter pour un changement hors cache (`README.md`, `CLAUDE.md`,
+`GUIDE-GITHUB.md`, `LICENSE`, `tests/`, `.github/`, `package.json`,
+`.gitattributes`, `.nojekyll`, `.gitignore`).
 
 ## Nouvelle version : jamais de changement par surprise
 
@@ -181,12 +197,25 @@ minuteur et après « Plus tard »), **même si Cap est fermée puis rouverte**.
 - Pas de `self.skipWaiting()` dans l'installation ; ne jamais remplacer un
   fichier rangé en arrière-plan.
 
-## Tester en local
+## Tester en local et en CI
 
-Ce dépôt ne contient pas de serveur de test. Un service worker ne fonctionne
-**que** sur `https://` ou `http://localhost`, jamais en `file://` : servir le
-dossier par un petit serveur HTTP local (par exemple `python3 -m http.server`)
-pour vérifier l'installation et le mode hors ligne.
+Le dépôt inclut une suite de tests statiques et de tests navigateur Playwright
+(sans dépendance applicative) :
+- `npm run test:static` : vérifie `tests/static.test.mjs` (CSP, zéro inline,
+  `sw.js` `cap-v21`, manifeste, icônes PNG, contrastes CSS, zéro son,
+  `LICENSE` intact).
+- `npm run test:e2e` : vérifie `tests/e2e.test.mjs` sous Chromium (CSP, hors
+  ligne + `?vue=`, 14 thèmes WCAG AA, cibles ≥ 60 px en `390×844` et
+  `320×640` à `echelle: 1.35`, routines/tâches/minuteur, sauvegarde/restauration
+  v1/v2/v3, `Échap`/`popstate` sans perte de progression, `QuotaExceededError`).
+- `npm test` : lance les deux suites.
+- `.github/workflows/ci.yml` : exécute `npm run test:static` et
+  `npm run test:e2e` sur `ubuntu-latest` à chaque push et pull request.
+
+Un service worker ne fonctionne **que** sur `https://` ou `http://localhost`,
+jamais en `file://` : pour tester manuellement l'installation et le mode hors
+ligne, servir le dossier par un petit serveur HTTP local (par exemple
+`python3 -m http.server`).
 
 Déploiement : GitHub Pages, branche `main`, racine.
 

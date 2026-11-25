@@ -1,0 +1,11 @@
+{
+  "name": "cap",
+  "version": "21.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:static": "node tests/static.test.mjs",
+    "test:e2e": "node tests/e2e.test.mjs",
+    "test": "node tests/static.test.mjs && node tests/e2e.test.mjs"
+  }
+}
