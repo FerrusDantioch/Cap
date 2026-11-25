@@ -3,33 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; manifest-src 'self'; worker-src 'self'">
 <title>Cap</title>
 <meta name="description" content="Cap — une aide simple pour démarrer une tâche, s'organiser et ne pas se perdre en route.">
 <meta name="theme-color" content="#171b21">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icons/icon-192.png">
-<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <!-- Pose le thème, la gamme de couleurs et la taille du texte choisis AVANT
      le premier affichage, pour éviter un flash de mauvaises couleurs (ou un
      texte qui change de taille) le temps qu'app.js s'exécute. -->
-<script>
-(function () {
-  try {
-    var r = JSON.parse(localStorage.getItem('cap_reglages')) || {};
-    var palette = r.palette || 'bleu';
-    var theme = r.theme || 'auto';
-    if (theme === 'auto') {
-      theme = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'sombre' : 'clair';
-    }
-    document.documentElement.dataset.mode = palette + '-' + theme;
-    var echelle = Number(r.echelle);
-    if (echelle >= 0.8 && echelle <= 1.5) document.documentElement.style.setProperty('--echelle', echelle);
-  } catch (e) {
-    document.documentElement.dataset.mode = 'bleu-sombre';
-  }
-})();
-</script>
+<script src="./theme-init.js"></script>
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -38,6 +23,11 @@
 <p id="annonce" class="annonce" role="status" aria-live="polite"></p>
 
 <main>
+
+  <div id="alerte-stockage" class="carte carte-alerte masque" role="status">
+    <p id="alerte-stockage-texte"></p>
+    <button type="button" id="btn-alerte-stockage-fermer">Fermer</button>
+  </div>
 
   <!-- ========================================================
        ACCUEIL
@@ -75,7 +65,7 @@
         <button type="button" id="btn-tdj-fait" class="bouton-doux">C'est fait ✓</button>
         <button type="button" id="btn-tdj-ouvrir">Ouvrir</button>
       </div>
-      <button type="button" id="btn-tdj-retirer" class="masque" style="margin-top:12px">Retirer de l'accueil</button>
+      <button type="button" id="btn-tdj-retirer" class="masque mt-12">Retirer de l'accueil</button>
     </div>
 
     <button type="button" id="btn-accueil-routines" class="bouton-accueil">
@@ -122,11 +112,11 @@
       <h1>Mes routines</h1>
     </div>
 
-    <button type="button" id="btn-nouvelle-routine" class="bouton-doux" style="margin-bottom:12px">
+    <button type="button" id="btn-nouvelle-routine" class="bouton-doux mb-12">
       + Créer une routine
     </button>
 
-    <button type="button" id="btn-modeles" class="bouton-secondaire" style="margin-bottom:18px"
+    <button type="button" id="btn-modeles" class="bouton-secondaire mb-18"
             aria-expanded="false" aria-controls="zone-modeles">
       Partir d'un modèle
     </button>
@@ -139,7 +129,7 @@
 
     <div id="liste-routines"></div>
 
-    <button type="button" id="btn-historique" class="bouton-secondaire" style="margin-top:8px">
+    <button type="button" id="btn-historique" class="bouton-secondaire mt-8">
       Historique des routines terminées
     </button>
   </section>
@@ -163,7 +153,7 @@
 
     <div id="liste-historique"></div>
 
-    <button type="button" id="btn-historique-vider" class="bouton-secondaire" style="margin-top:8px">
+    <button type="button" id="btn-historique-vider" class="bouton-secondaire mt-8">
       Vider l'historique
     </button>
   </section>
@@ -191,7 +181,7 @@
     <!-- Combien d'étapes sont essentielles : un repère, jamais un blocage. -->
     <p id="rf-essentielles" aria-live="polite"><small></small></p>
 
-    <button type="button" id="btn-rf-ajouter-etape" class="bouton-secondaire" style="margin-bottom:18px">
+    <button type="button" id="btn-rf-ajouter-etape" class="bouton-secondaire mb-18">
       + Ajouter une étape
     </button>
 
@@ -225,7 +215,7 @@
 
       <!-- Durée prévue de l'étape, si la personne en a choisi une. -->
       <div id="rl-minuteur-etape" class="minuteur-etape masque">
-        <div class="barre-progres"><div id="rl-barre-etape" style="width:100%"></div></div>
+        <div class="barre-progres"><div id="rl-barre-etape"></div></div>
         <p id="rl-temps-etape"></p>
       </div>
 
@@ -234,7 +224,7 @@
 
     <button type="button" id="btn-rl-valider" class="bouton-valider">C'est fait ✓</button>
 
-    <div class="bouton-rangee hors-une-chose" style="margin-bottom:14px">
+    <div class="bouton-rangee hors-une-chose mb-14">
       <button type="button" id="btn-rl-precedente" class="bouton-secondaire">← Étape précédente</button>
       <button type="button" id="btn-rl-passer" class="bouton-secondaire">Passer cette étape</button>
     </div>
@@ -245,7 +235,7 @@
     </details>
 
     <button type="button" id="btn-rl-arreter" class="bouton-secondaire hors-une-chose">Arrêter la routine</button>
-    <p class="hors-une-chose" style="margin-top:12px"><small>Si tu quittes cet écran, ta progression
+    <p class="hors-une-chose mt-12"><small>Si tu quittes cet écran, ta progression
        est gardée : tu pourras reprendre depuis l'accueil.</small></p>
   </section>
 
@@ -253,13 +243,13 @@
        ROUTINES — écran de fin
        ======================================================== -->
   <section id="vue-routine-fin" class="vue" hidden>
-    <div style="text-align:center; padding:60px 10px">
+    <div class="ecran-fin">
       <h1>Routine terminée</h1>
-      <p style="color:var(--texte-doux)">Bien joué. Elle est prête à être relancée la prochaine fois.</p>
+      <p class="texte-doux">Bien joué. Elle est prête à être relancée la prochaine fois.</p>
       <p id="rl-fin-difficile" class="masque"><small>Version journée difficile :
          seulement les étapes essentielles.</small></p>
       <p id="rl-fin-passees" class="masque"><small></small></p>
-      <button type="button" data-accueil class="bouton-doux" style="margin-top:20px">Retour à l'accueil</button>
+      <button type="button" data-accueil class="bouton-doux mt-20">Retour à l'accueil</button>
     </div>
   </section>
 
@@ -272,7 +262,7 @@
       <h1>Mes tâches</h1>
     </div>
 
-    <button type="button" id="btn-nouvelle-tache" class="bouton-doux" style="margin-bottom:18px">
+    <button type="button" id="btn-nouvelle-tache" class="bouton-doux mb-18">
       + Nouvelle tâche
     </button>
 
@@ -309,7 +299,7 @@
     <p><small>Tu peux ajouter une image à chaque étape. C'est facultatif.</small></p>
     <div id="tf-etapes"></div>
 
-    <button type="button" id="btn-tf-ajouter-etape" class="bouton-secondaire" style="margin-bottom:18px">
+    <button type="button" id="btn-tf-ajouter-etape" class="bouton-secondaire mb-18">
       + Ajouter une étape
     </button>
 
@@ -341,7 +331,7 @@
     </div>
 
     <p class="meta hors-une-chose" id="td-progres"></p>
-    <div class="barre-progres hors-une-chose" style="margin-bottom:20px"><div id="td-barre" style="width:0%"></div></div>
+    <div class="barre-progres hors-une-chose mb-20"><div id="td-barre"></div></div>
 
     <!-- Même bouton que pour les routines : « Une seule chose » ou « Voir tout ». -->
     <button type="button" id="btn-td-mode" class="bouton-secondaire bouton-mode">
@@ -371,7 +361,7 @@
          Il se base sur l'heure de départ : il reste juste même si le
          téléphone se verrouille ou si Cap est fermée. Il s'arrête tout seul
          quand la dernière étape est cochée. -->
-    <div id="td-temps" class="carte temps-tache hors-une-chose" style="margin-top:24px">
+    <div id="td-temps" class="carte temps-tache hors-une-chose mt-24">
       <h2>Temps passé</h2>
       <p id="td-temps-texte" class="temps-valeur"></p>
       <p id="td-temps-ecart" class="masque"></p>
@@ -386,10 +376,10 @@
     <button type="button" id="btn-td-epingler" class="hors-une-chose" aria-pressed="false">
       Épingler sur l'accueil
     </button>
-    <button type="button" id="btn-td-modifier" class="hors-une-chose" style="margin-top:12px">
+    <button type="button" id="btn-td-modifier" class="hors-une-chose mt-12">
       Modifier la tâche
     </button>
-    <button type="button" id="btn-td-supprimer" class="bouton-secondaire hors-une-chose" style="margin-top:12px">
+    <button type="button" id="btn-td-supprimer" class="bouton-secondaire hors-une-chose mt-12">
       Supprimer cette tâche
     </button>
   </section>
@@ -425,7 +415,7 @@
       <div class="duree-libre">
         <input type="number" id="min-libre" min="1" max="180" placeholder="Autre" aria-label="Autre durée, en minutes">
         <span>minutes</span>
-        <button type="button" id="btn-min-libre-valider" style="width:auto; min-width:100px">Valider</button>
+        <button type="button" id="btn-min-libre-valider">Valider</button>
       </div>
 
       <label for="min-nom">À quoi sert ce minuteur ? (facultatif)</label>
@@ -445,7 +435,7 @@
       <button type="button" id="btn-min-recommencer" class="bouton-doux">Choisir une nouvelle durée</button>
     </div>
 
-    <label class="interrupteur" for="min-preavis" style="margin-top:10px">
+    <label class="interrupteur mt-10" for="min-preavis">
       <span>Prévenir avant la fin</span>
       <input type="checkbox" id="min-preavis" checked>
     </label>
@@ -492,31 +482,31 @@
     <h3>Couleurs</h3>
     <div class="palette-grille" id="choix-palette" role="group" aria-label="Gamme de couleurs">
       <button type="button" class="palette-carte" data-palette-val="bleu">
-        <span class="pastille" style="background:#9dbcd0"></span>
+        <span class="pastille"></span>
         Bleu-gris
       </button>
       <button type="button" class="palette-carte" data-palette-val="sauge">
-        <span class="pastille" style="background:#a5ccb4"></span>
+        <span class="pastille"></span>
         Sauge
       </button>
       <button type="button" class="palette-carte" data-palette-val="lavande">
-        <span class="pastille" style="background:#c0b6e6"></span>
+        <span class="pastille"></span>
         Lavande
       </button>
       <button type="button" class="palette-carte" data-palette-val="sable">
-        <span class="pastille" style="background:#b89a7a"></span>
+        <span class="pastille"></span>
         Sable
       </button>
       <button type="button" class="palette-carte" data-palette-val="peche">
-        <span class="pastille" style="background:#ddb8a3"></span>
+        <span class="pastille"></span>
         Pêche
       </button>
       <button type="button" class="palette-carte" data-palette-val="miel">
-        <span class="pastille" style="background:#d6c19f"></span>
+        <span class="pastille"></span>
         Miel
       </button>
       <button type="button" class="palette-carte" data-palette-val="rose">
-        <span class="pastille" style="background:#daabb5"></span>
+        <span class="pastille"></span>
         Rose poudré
       </button>
     </div>
@@ -534,7 +524,7 @@
     <!-- Ces cases portent data-reglage : app.js les garde d'accord avec les
          mêmes réglages ailleurs (l'interrupteur de l'accueil, les boutons
          « Une seule chose » / « Voir tout »). -->
-    <h3 style="margin-top:24px">Routines et tâches</h3>
+    <h3 class="mt-24">Routines et tâches</h3>
     <label class="interrupteur" for="reglage-journee-difficile">
       <span>Journée difficile</span>
       <input type="checkbox" role="switch" id="reglage-journee-difficile" data-reglage="journeeDifficile">
@@ -563,7 +553,7 @@
        l'étape qui vient. Un toucher la termine tout de suite.</small></p>
     <!-- Masqué quand les transitions douces sont éteintes. -->
     <div id="zone-duree-transition">
-      <p style="margin-bottom:8px"><small>Durée de la pause :</small></p>
+      <p class="mb-8"><small>Durée de la pause :</small></p>
       <div class="choix" id="choix-duree-transition" role="group" aria-label="Durée de la pause">
         <button type="button" data-secondes="5" aria-label="5 secondes">5 s</button>
         <button type="button" data-secondes="10" aria-label="10 secondes">10 s</button>
@@ -587,14 +577,14 @@
        trouves en bas de «&nbsp;Mes routines&nbsp;», et tu peux le vider à
        tout moment.</small></p>
 
-    <h3 style="margin-top:24px">Sauvegarde de mes données</h3>
+    <h3 class="mt-24">Sauvegarde de mes données</h3>
     <p><small>Tes routines, tes tâches, ton historique et tes réglages sont gardés dans le
        navigateur de ce téléphone. Si ses données sont effacées (nettoyage du
        cache, réinstallation, changement de téléphone), tout disparaît. Un
        fichier de sauvegarde, rangé dans le téléphone, permet de tout
        retrouver.</small></p>
 
-    <button type="button" id="btn-sauvegarder" class="bouton-doux" style="margin-bottom:12px">
+    <button type="button" id="btn-sauvegarder" class="bouton-doux mb-12">
       Enregistrer une sauvegarde
     </button>
     <p id="derniere-sauvegarde"><small></small></p>
@@ -604,18 +594,18 @@
          plus grand et plus lisible, l'ouvre à sa place. -->
     <input type="file" id="fichier-restaurer" accept=".json,application/json" hidden>
 
-    <div id="restaurer-confirmation" class="carte masque" style="margin-top:16px">
-      <p id="restaurer-resume" style="margin-top:0"></p>
+    <div id="restaurer-confirmation" class="carte masque mt-16">
+      <p id="restaurer-resume" class="mt-0"></p>
       <div class="bouton-rangee">
         <button type="button" id="btn-restaurer-annuler">Annuler</button>
         <button type="button" id="btn-restaurer-confirmer" class="bouton-doux">Restaurer</button>
       </div>
     </div>
-    <p id="restaurer-message" class="carte masque" role="status" style="margin-top:16px"></p>
+    <p id="restaurer-message" class="carte masque mt-16" role="status"></p>
 
     <!-- À propos : qui a conçu l'application, et un lien discret vers les
          autres projets (ouvert dans un nouvel onglet, pour ne pas quitter Cap). -->
-    <h3 style="margin-top:24px">À propos</h3>
+    <h3 class="mt-24">À propos</h3>
     <p>Cette application a été conçue et développée par Ferrus Dantioch, avec
        l'aide de l'intelligence artificielle.</p>
     <p><small>Voir d'autres projets :
